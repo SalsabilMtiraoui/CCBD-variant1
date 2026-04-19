@@ -1,0 +1,11 @@
+boto3
+pyarrow
+pandas
+matplotlib
+python-dotenv
+azure-storage-blob
+
+
+# Make sure Docker is installed !
+# pip install boto3 pyarrow pandas matplotlib python-dotenv azure-storage-blob
+# python.exe -m pip install --upgrade pip
