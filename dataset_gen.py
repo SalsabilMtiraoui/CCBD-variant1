@@ -26,7 +26,7 @@ def generate_dataset(size_label, seed=42, output_dir="data"):
     target_bytes = SIZES[size_label]
 
     # ~120 bytes par ligne estimé
-    estimated_rows = target_bytes // 18
+    estimated_rows = target_bytes // 18 #CHECK WHAT SIZE TO PUT EXACTLY
     print(f"Génération taille {size_label} — ~{estimated_rows:,} lignes...")
 
     os.makedirs(output_dir, exist_ok=True)
