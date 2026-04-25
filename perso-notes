@@ -1,0 +1,82 @@
+(.venv) PS C:\Users\salsa\Documents\UNINE BA6\Cloud\CCBD-variant1> .venv\Scripts\python dataset_gen.py --size S
+
+==================================================
+Generating dataset S
+Target rows : 5,000,000
+==================================================
+  Progress: 500,000 / 5,000,000 rows
+  Progress: 1,000,000 / 5,000,000 rows
+  Progress: 1,500,000 / 5,000,000 rows
+  Progress: 2,000,000 / 5,000,000 rows
+  Progress: 2,500,000 / 5,000,000 rows
+  Progress: 3,000,000 / 5,000,000 rows
+  Progress: 3,500,000 / 5,000,000 rows
+  Progress: 4,000,000 / 5,000,000 rows
+  Progress: 4,500,000 / 5,000,000 rows
+  Progress: 5,000,000 / 5,000,000 rows
+
+Dataset S generated:
+  Rows    : 5,000,000
+  CSV     : 0.322 GB -> data\dataset_S.csv
+  Parquet : 0.102 GB -> data\dataset_S.parquet
+  Parquet is 68.2% smaller than CSV
+(.venv) PS C:\Users\salsa\Documents\UNINE BA6\Cloud\CCBD-variant1> .venv\Scripts\python bench.py --size S
+
+============================================================
+BENCHMARK SIZE S
+============================================================
+
+==================================================
+Generating dataset S
+Target rows : 5,000,000
+==================================================
+  Progress: 500,000 / 5,000,000 rows
+  Progress: 1,000,000 / 5,000,000 rows
+  Progress: 1,500,000 / 5,000,000 rows
+  Progress: 2,000,000 / 5,000,000 rows
+  Progress: 2,500,000 / 5,000,000 rows
+  Progress: 3,000,000 / 5,000,000 rows
+  Progress: 3,500,000 / 5,000,000 rows
+  Progress: 4,000,000 / 5,000,000 rows
+  Progress: 4,500,000 / 5,000,000 rows
+  Progress: 5,000,000 / 5,000,000 rows
+
+Dataset S generated:
+  Rows    : 5,000,000
+  CSV     : 0.322 GB -> data\dataset_S.csv
+  Parquet : 0.102 GB -> data\dataset_S.parquet
+  Parquet is 68.2% smaller than CSV
+
+Uploading CSV (S)...
+  Uploaded raw/financial_S/csv/dataset_S.csv | 322.0 MB | 0.51 MB/s | 607.3s
+
+Uploading Parquet (S)...
+  Uploaded curated/financial_S/parquet/dataset_S.parquet | 102.3 MB | 1.15 MB/s | 85.1s
+
+Downloading CSV (S)...
+  Downloaded raw/financial_S/csv/dataset_S.csv | 322.0 MB | 2.57 MB/s | 119.6s
+
+Downloading Parquet (S)...
+  Downloaded curated/financial_S/parquet/dataset_S.parquet | 102.3 MB | 7.26 MB/s | 13.4s
+
+Listing prefixes...
+  CSV listing    : 0.955s
+  Parquet listing: 0.039s
+
+Running analytics queries...
+  CSV query: 246,389 rows in 24.00s
+            count          mean
+event_type                     
+deposit     61580  25030.161022
+payment     61398  24984.107931
+transfer    61841  24938.040672
+withdrawal  61570  24996.450586
+  Parquet query: 246,389 rows in 0.68s
+            count          mean
+event_type                     
+deposit     61580  25030.161022
+payment     61398  24984.107931
+transfer    61841  24938.040672
+withdrawal  61570  24996.450586
+
+Results saved to results\results.csv
