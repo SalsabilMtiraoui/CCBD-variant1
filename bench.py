@@ -56,19 +56,35 @@ def run_query_parquet(local_path):
     return elapsed, len(df)
 
 def run_query_csv(local_path):
-    """Même requête analytique sur CSV avec pandas"""
+    """Requête analytique sur CSV — lecture par chunks pour gérer les gros fichiers"""
     start = time.time()
-    df = pd.read_csv(local_path, parse_dates=["ts"])
-    df = df[
-        (df["region"] == "Europe") &
-        (df["ts"] >= pd.Timestamp("2022-01-01")) &
-        (df["ts"] <= pd.Timestamp("2022-06-30"))
-    ]
-    result = df.groupby("event_type")["value"].agg(["count", "mean"])
+    results = []
+    total_rows = 0
+
+    for chunk in pd.read_csv(local_path, parse_dates=["ts"], chunksize=500_000):
+        filtered = chunk[
+            (chunk["region"] == "Europe") &
+            (chunk["ts"] >= pd.Timestamp("2022-01-01")) &
+            (chunk["ts"] <= pd.Timestamp("2022-06-30"))
+        ]
+        if len(filtered) > 0:
+            results.append(
+                filtered.groupby("event_type")["value"].agg(["sum", "count"])
+            )
+        total_rows += len(filtered)
+
+    # Agrège tous les chunks
+    if results:
+        combined = pd.concat(results).groupby("event_type").sum()
+        combined["mean"] = combined["sum"] / combined["count"]
+        combined = combined[["count", "mean"]]
+    else:
+        combined = pd.DataFrame()
+
     elapsed = time.time() - start
-    print(f"  CSV query: {len(df):,} rows in {elapsed:.2f}s")
-    print(result)
-    return elapsed, len(df)
+    print(f"  CSV query done: {total_rows:,} rows in {elapsed:.2f}s")
+    print(combined)
+    return elapsed, total_rows
 
 def run_benchmark(size_label, skip_generate=False, skip_upload=False):
     print(f"\n{'='*60}")

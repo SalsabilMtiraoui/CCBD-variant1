@@ -80,3 +80,466 @@ transfer    61841  24938.040672
 withdrawal  61570  24996.450586
 
 Results saved to results\results.csv
+
+
+-----------------------------------------------------------------------------------------------------
+PS C:\Users\salsa\Documents\UNINE BA6\Cloud\CCBD-variant1> (Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned) ; (& "c:\Users\salsa\Documents\UNINE BA6\Cloud\CCBD-variant1\.venv\Scripts\Activate.ps1")
+(.venv) PS C:\Users\salsa\Documents\UNINE BA6\Cloud\CCBD-variant1> .venv\Scripts\python dataset_gen.py --size S
+
+==================================================
+Generating dataset S
+Target rows : 5,000,000
+==================================================
+  Progress: 500,000 / 5,000,000 rows
+  Progress: 1,000,000 / 5,000,000 rows
+  Progress: 1,500,000 / 5,000,000 rows
+  Progress: 2,000,000 / 5,000,000 rows
+  Progress: 2,500,000 / 5,000,000 rows
+  Progress: 3,000,000 / 5,000,000 rows
+  Progress: 3,500,000 / 5,000,000 rows
+  Progress: 4,000,000 / 5,000,000 rows
+  Progress: 4,500,000 / 5,000,000 rows
+  Progress: 5,000,000 / 5,000,000 rows
+
+Dataset S generated:
+  Rows    : 5,000,000
+  CSV     : 0.322 GB -> data\dataset_S.csv
+  Parquet : 0.102 GB -> data\dataset_S.parquet
+  Parquet is 68.2% smaller than CSV
+(.venv) PS C:\Users\salsa\Documents\UNINE BA6\Cloud\CCBD-variant1> .venv\Scripts\python bench.py --size S
+
+============================================================
+BENCHMARK SIZE S
+============================================================
+
+==================================================
+Generating dataset S
+Target rows : 5,000,000
+==================================================
+  Progress: 500,000 / 5,000,000 rows
+  Progress: 1,000,000 / 5,000,000 rows
+  Progress: 1,500,000 / 5,000,000 rows
+  Progress: 2,000,000 / 5,000,000 rows
+  Progress: 2,500,000 / 5,000,000 rows
+  Progress: 3,000,000 / 5,000,000 rows
+  Progress: 3,500,000 / 5,000,000 rows
+  Progress: 4,000,000 / 5,000,000 rows
+  Progress: 4,500,000 / 5,000,000 rows
+  Progress: 5,000,000 / 5,000,000 rows
+
+Dataset S generated:
+  Rows    : 5,000,000
+  CSV     : 0.322 GB -> data\dataset_S.csv
+  Parquet : 0.102 GB -> data\dataset_S.parquet
+  Parquet is 68.2% smaller than CSV
+
+Uploading CSV (S)...
+  Uploaded raw/financial_S/csv/dataset_S.csv | 322.0 MB | 0.51 MB/s | 607.3s
+
+Uploading Parquet (S)...
+  Uploaded curated/financial_S/parquet/dataset_S.parquet | 102.3 MB | 1.15 MB/s | 85.1s
+
+Downloading CSV (S)...
+  Downloaded raw/financial_S/csv/dataset_S.csv | 322.0 MB | 2.57 MB/s | 119.6s
+
+Downloading Parquet (S)...
+  Downloaded curated/financial_S/parquet/dataset_S.parquet | 102.3 MB | 7.26 MB/s | 13.4s
+
+Listing prefixes...
+  CSV listing    : 0.955s
+  Parquet listing: 0.039s
+
+Running analytics queries...
+  CSV query: 246,389 rows in 24.00s
+            count          mean
+event_type                     
+deposit     61580  25030.161022
+payment     61398  24984.107931
+transfer    61841  24938.040672
+withdrawal  61570  24996.450586
+  Parquet query: 246,389 rows in 0.68s
+            count          mean
+event_type                     
+deposit     61580  25030.161022
+payment     61398  24984.107931
+transfer    61841  24938.040672
+withdrawal  61570  24996.450586
+
+Results saved to results\results.csv
+(.venv) PS C:\Users\salsa\Documents\UNINE BA6\Cloud\CCBD-variant1> .venv\Scripts\python bench.py --size M
+>> .venv\Scripts\python bench.py --size L
+
+============================================================
+BENCHMARK SIZE M
+============================================================
+
+==================================================
+Generating dataset M
+Target rows : 25,000,000
+==================================================
+  Progress: 500,000 / 25,000,000 rows
+  Progress: 1,000,000 / 25,000,000 rows
+  Progress: 1,500,000 / 25,000,000 rows
+  Progress: 2,000,000 / 25,000,000 rows
+  Progress: 2,500,000 / 25,000,000 rows
+  Progress: 3,000,000 / 25,000,000 rows
+  Progress: 3,500,000 / 25,000,000 rows
+  Progress: 4,000,000 / 25,000,000 rows
+  Progress: 4,500,000 / 25,000,000 rows
+  Progress: 5,000,000 / 25,000,000 rows
+  Progress: 5,500,000 / 25,000,000 rows
+  Progress: 6,000,000 / 25,000,000 rows
+  Progress: 6,500,000 / 25,000,000 rows
+  Progress: 7,000,000 / 25,000,000 rows
+  Progress: 7,500,000 / 25,000,000 rows
+  Progress: 8,000,000 / 25,000,000 rows
+  Progress: 8,500,000 / 25,000,000 rows
+  Progress: 9,000,000 / 25,000,000 rows
+  Progress: 9,500,000 / 25,000,000 rows
+  Progress: 10,000,000 / 25,000,000 rows
+  Progress: 10,500,000 / 25,000,000 rows
+  Progress: 11,000,000 / 25,000,000 rows
+  Progress: 11,500,000 / 25,000,000 rows
+  Progress: 12,000,000 / 25,000,000 rows
+  Progress: 12,500,000 / 25,000,000 rows
+  Progress: 13,000,000 / 25,000,000 rows
+  Progress: 13,500,000 / 25,000,000 rows
+  Progress: 14,000,000 / 25,000,000 rows
+  Progress: 14,500,000 / 25,000,000 rows
+  Progress: 15,000,000 / 25,000,000 rows
+  Progress: 15,500,000 / 25,000,000 rows
+  Progress: 16,000,000 / 25,000,000 rows
+  Progress: 16,500,000 / 25,000,000 rows
+  Progress: 17,000,000 / 25,000,000 rows
+  Progress: 17,500,000 / 25,000,000 rows
+  Progress: 18,000,000 / 25,000,000 rows
+  Progress: 18,500,000 / 25,000,000 rows
+  Progress: 19,000,000 / 25,000,000 rows
+  Progress: 19,500,000 / 25,000,000 rows
+  Progress: 20,000,000 / 25,000,000 rows
+  Progress: 20,500,000 / 25,000,000 rows
+  Progress: 21,000,000 / 25,000,000 rows
+  Progress: 21,500,000 / 25,000,000 rows
+  Progress: 22,000,000 / 25,000,000 rows
+  Progress: 22,500,000 / 25,000,000 rows
+  Progress: 23,000,000 / 25,000,000 rows
+  Progress: 23,500,000 / 25,000,000 rows
+  Progress: 24,000,000 / 25,000,000 rows
+  Progress: 24,500,000 / 25,000,000 rows
+  Progress: 25,000,000 / 25,000,000 rows
+
+Dataset M generated:
+  Rows    : 25,000,000
+  CSV     : 1.610 GB -> data\dataset_M.csv
+  Parquet : 0.512 GB -> data\dataset_M.parquet
+  Parquet is 68.2% smaller than CSV
+
+Uploading CSV (M)...
+  Uploaded raw/financial_M/csv/dataset_M.csv | 1609.7 MB | 6.92 MB/s | 222.0s
+
+Uploading Parquet (M)...
+  Uploaded curated/financial_M/parquet/dataset_M.parquet | 511.7 MB | 7.07 MB/s | 69.0s
+
+Downloading CSV (M)...
+  Downloaded raw/financial_M/csv/dataset_M.csv | 1609.7 MB | 6.92 MB/s | 222.0s
+
+Downloading Parquet (M)...
+  Downloaded curated/financial_M/parquet/dataset_M.parquet | 511.7 MB | 7.52 MB/s | 64.9s
+
+Listing prefixes...
+  CSV listing    : 1.007s
+  Parquet listing: 0.027s
+
+Running analytics queries...
+  CSV query: 1,233,021 rows in 114.88s
+             count          mean
+event_type                      
+deposit     308353  24990.765827
+payment     307344  25011.939519
+transfer    308449  24975.179950
+withdrawal  308875  25009.077193
+  Parquet query: 1,233,021 rows in 2.33s
+             count          mean
+event_type                      
+deposit     308353  24990.765827
+payment     307344  25011.939519
+transfer    308449  24975.179950
+withdrawal  308875  25009.077193
+
+Results saved to results\results.csv
+
+============================================================
+BENCHMARK SIZE L
+============================================================
+
+==================================================
+Generating dataset L
+Target rows : 100,000,000
+==================================================
+  Progress: 500,000 / 100,000,000 rows
+  Progress: 1,000,000 / 100,000,000 rows
+  Progress: 1,500,000 / 100,000,000 rows
+  Progress: 2,000,000 / 100,000,000 rows
+  Progress: 2,500,000 / 100,000,000 rows
+  Progress: 3,000,000 / 100,000,000 rows
+  Progress: 3,500,000 / 100,000,000 rows
+  Progress: 4,000,000 / 100,000,000 rows
+  Progress: 4,500,000 / 100,000,000 rows
+  Progress: 5,000,000 / 100,000,000 rows
+  Progress: 5,500,000 / 100,000,000 rows
+  Progress: 6,000,000 / 100,000,000 rows
+  Progress: 6,500,000 / 100,000,000 rows
+  Progress: 7,000,000 / 100,000,000 rows
+  Progress: 7,500,000 / 100,000,000 rows
+  Progress: 8,000,000 / 100,000,000 rows
+  Progress: 8,500,000 / 100,000,000 rows
+  Progress: 9,000,000 / 100,000,000 rows
+  Progress: 9,500,000 / 100,000,000 rows
+  Progress: 10,000,000 / 100,000,000 rows
+  Progress: 10,500,000 / 100,000,000 rows
+  Progress: 11,000,000 / 100,000,000 rows
+  Progress: 11,500,000 / 100,000,000 rows
+  Progress: 12,000,000 / 100,000,000 rows
+  Progress: 12,500,000 / 100,000,000 rows
+  Progress: 13,000,000 / 100,000,000 rows
+  Progress: 13,500,000 / 100,000,000 rows
+  Progress: 14,000,000 / 100,000,000 rows
+  Progress: 14,500,000 / 100,000,000 rows
+  Progress: 15,000,000 / 100,000,000 rows
+  Progress: 15,500,000 / 100,000,000 rows
+  Progress: 16,000,000 / 100,000,000 rows
+  Progress: 16,500,000 / 100,000,000 rows
+  Progress: 17,000,000 / 100,000,000 rows
+  Progress: 17,500,000 / 100,000,000 rows
+  Progress: 18,000,000 / 100,000,000 rows
+  Progress: 18,500,000 / 100,000,000 rows
+  Progress: 19,000,000 / 100,000,000 rows
+  Progress: 19,500,000 / 100,000,000 rows
+  Progress: 20,000,000 / 100,000,000 rows
+  Progress: 20,500,000 / 100,000,000 rows
+  Progress: 21,000,000 / 100,000,000 rows
+  Progress: 21,500,000 / 100,000,000 rows
+  Progress: 22,000,000 / 100,000,000 rows
+  Progress: 22,500,000 / 100,000,000 rows
+  Progress: 23,000,000 / 100,000,000 rows
+  Progress: 23,500,000 / 100,000,000 rows
+  Progress: 24,000,000 / 100,000,000 rows
+  Progress: 24,500,000 / 100,000,000 rows
+  Progress: 25,000,000 / 100,000,000 rows
+  Progress: 25,500,000 / 100,000,000 rows
+  Progress: 26,000,000 / 100,000,000 rows
+  Progress: 26,500,000 / 100,000,000 rows
+  Progress: 27,000,000 / 100,000,000 rows
+  Progress: 27,500,000 / 100,000,000 rows
+  Progress: 28,000,000 / 100,000,000 rows
+  Progress: 28,500,000 / 100,000,000 rows
+  Progress: 29,000,000 / 100,000,000 rows
+  Progress: 29,500,000 / 100,000,000 rows
+  Progress: 30,000,000 / 100,000,000 rows
+  Progress: 30,500,000 / 100,000,000 rows
+  Progress: 31,000,000 / 100,000,000 rows
+  Progress: 31,500,000 / 100,000,000 rows
+  Progress: 32,000,000 / 100,000,000 rows
+  Progress: 32,500,000 / 100,000,000 rows
+  Progress: 33,000,000 / 100,000,000 rows
+  Progress: 33,500,000 / 100,000,000 rows
+  Progress: 34,000,000 / 100,000,000 rows
+  Progress: 34,500,000 / 100,000,000 rows
+  Progress: 35,000,000 / 100,000,000 rows
+  Progress: 35,500,000 / 100,000,000 rows
+  Progress: 36,000,000 / 100,000,000 rows
+  Progress: 36,500,000 / 100,000,000 rows
+  Progress: 37,000,000 / 100,000,000 rows
+  Progress: 37,500,000 / 100,000,000 rows
+  Progress: 38,000,000 / 100,000,000 rows
+  Progress: 38,500,000 / 100,000,000 rows
+  Progress: 39,000,000 / 100,000,000 rows
+  Progress: 39,500,000 / 100,000,000 rows
+  Progress: 40,000,000 / 100,000,000 rows
+  Progress: 40,500,000 / 100,000,000 rows
+  Progress: 41,000,000 / 100,000,000 rows
+  Progress: 41,500,000 / 100,000,000 rows
+  Progress: 42,000,000 / 100,000,000 rows
+  Progress: 42,500,000 / 100,000,000 rows
+  Progress: 43,000,000 / 100,000,000 rows
+  Progress: 43,500,000 / 100,000,000 rows
+  Progress: 44,000,000 / 100,000,000 rows
+  Progress: 44,500,000 / 100,000,000 rows
+  Progress: 45,000,000 / 100,000,000 rows
+  Progress: 45,500,000 / 100,000,000 rows
+  Progress: 46,000,000 / 100,000,000 rows
+  Progress: 46,500,000 / 100,000,000 rows
+  Progress: 47,000,000 / 100,000,000 rows
+  Progress: 47,500,000 / 100,000,000 rows
+  Progress: 48,000,000 / 100,000,000 rows
+  Progress: 48,500,000 / 100,000,000 rows
+  Progress: 49,000,000 / 100,000,000 rows
+  Progress: 49,500,000 / 100,000,000 rows
+  Progress: 50,000,000 / 100,000,000 rows
+  Progress: 50,500,000 / 100,000,000 rows
+  Progress: 51,000,000 / 100,000,000 rows
+  Progress: 51,500,000 / 100,000,000 rows
+  Progress: 52,000,000 / 100,000,000 rows
+  Progress: 52,500,000 / 100,000,000 rows
+  Progress: 53,000,000 / 100,000,000 rows
+  Progress: 53,500,000 / 100,000,000 rows
+  Progress: 54,000,000 / 100,000,000 rows
+  Progress: 54,500,000 / 100,000,000 rows
+  Progress: 55,000,000 / 100,000,000 rows
+  Progress: 55,500,000 / 100,000,000 rows
+  Progress: 56,000,000 / 100,000,000 rows
+  Progress: 56,500,000 / 100,000,000 rows
+  Progress: 57,000,000 / 100,000,000 rows
+  Progress: 57,500,000 / 100,000,000 rows
+  Progress: 58,000,000 / 100,000,000 rows
+  Progress: 58,500,000 / 100,000,000 rows
+  Progress: 59,000,000 / 100,000,000 rows
+  Progress: 59,500,000 / 100,000,000 rows
+  Progress: 60,000,000 / 100,000,000 rows
+  Progress: 60,500,000 / 100,000,000 rows
+  Progress: 61,000,000 / 100,000,000 rows
+  Progress: 61,500,000 / 100,000,000 rows
+  Progress: 62,000,000 / 100,000,000 rows
+  Progress: 62,500,000 / 100,000,000 rows
+  Progress: 63,000,000 / 100,000,000 rows
+  Progress: 63,500,000 / 100,000,000 rows
+  Progress: 64,000,000 / 100,000,000 rows
+  Progress: 64,500,000 / 100,000,000 rows
+  Progress: 65,000,000 / 100,000,000 rows
+  Progress: 65,500,000 / 100,000,000 rows
+  Progress: 66,000,000 / 100,000,000 rows
+  Progress: 66,500,000 / 100,000,000 rows
+  Progress: 67,000,000 / 100,000,000 rows
+  Progress: 67,500,000 / 100,000,000 rows
+  Progress: 68,000,000 / 100,000,000 rows
+  Progress: 68,500,000 / 100,000,000 rows
+  Progress: 69,000,000 / 100,000,000 rows
+  Progress: 69,500,000 / 100,000,000 rows
+  Progress: 70,000,000 / 100,000,000 rows
+  Progress: 70,500,000 / 100,000,000 rows
+  Progress: 71,000,000 / 100,000,000 rows
+  Progress: 71,500,000 / 100,000,000 rows
+  Progress: 72,000,000 / 100,000,000 rows
+  Progress: 72,500,000 / 100,000,000 rows
+  Progress: 73,000,000 / 100,000,000 rows
+  Progress: 73,500,000 / 100,000,000 rows
+  Progress: 74,000,000 / 100,000,000 rows
+  Progress: 74,500,000 / 100,000,000 rows
+  Progress: 75,000,000 / 100,000,000 rows
+  Progress: 75,500,000 / 100,000,000 rows
+  Progress: 76,000,000 / 100,000,000 rows
+  Progress: 76,500,000 / 100,000,000 rows
+  Progress: 77,000,000 / 100,000,000 rows
+  Progress: 77,500,000 / 100,000,000 rows
+  Progress: 78,000,000 / 100,000,000 rows
+  Progress: 78,500,000 / 100,000,000 rows
+  Progress: 79,000,000 / 100,000,000 rows
+  Progress: 79,500,000 / 100,000,000 rows
+  Progress: 80,000,000 / 100,000,000 rows
+  Progress: 80,500,000 / 100,000,000 rows
+  Progress: 81,000,000 / 100,000,000 rows
+  Progress: 81,500,000 / 100,000,000 rows
+  Progress: 82,000,000 / 100,000,000 rows
+  Progress: 82,500,000 / 100,000,000 rows
+  Progress: 83,000,000 / 100,000,000 rows
+  Progress: 83,500,000 / 100,000,000 rows
+  Progress: 84,000,000 / 100,000,000 rows
+  Progress: 84,500,000 / 100,000,000 rows
+  Progress: 85,000,000 / 100,000,000 rows
+  Progress: 85,500,000 / 100,000,000 rows
+  Progress: 86,000,000 / 100,000,000 rows
+  Progress: 86,500,000 / 100,000,000 rows
+  Progress: 87,000,000 / 100,000,000 rows
+  Progress: 87,500,000 / 100,000,000 rows
+  Progress: 88,000,000 / 100,000,000 rows
+  Progress: 88,500,000 / 100,000,000 rows
+  Progress: 89,000,000 / 100,000,000 rows
+  Progress: 89,500,000 / 100,000,000 rows
+  Progress: 90,000,000 / 100,000,000 rows
+  Progress: 90,500,000 / 100,000,000 rows
+  Progress: 91,000,000 / 100,000,000 rows
+  Progress: 91,500,000 / 100,000,000 rows
+  Progress: 92,000,000 / 100,000,000 rows
+  Progress: 92,500,000 / 100,000,000 rows
+  Progress: 93,000,000 / 100,000,000 rows
+  Progress: 93,500,000 / 100,000,000 rows
+  Progress: 94,000,000 / 100,000,000 rows
+  Progress: 94,500,000 / 100,000,000 rows
+  Progress: 95,000,000 / 100,000,000 rows
+  Progress: 95,500,000 / 100,000,000 rows
+  Progress: 96,000,000 / 100,000,000 rows
+  Progress: 96,500,000 / 100,000,000 rows
+  Progress: 97,000,000 / 100,000,000 rows
+  Progress: 97,500,000 / 100,000,000 rows
+  Progress: 98,000,000 / 100,000,000 rows
+  Progress: 98,500,000 / 100,000,000 rows
+  Progress: 99,000,000 / 100,000,000 rows
+  Progress: 99,500,000 / 100,000,000 rows
+  Progress: 100,000,000 / 100,000,000 rows
+
+Dataset L generated:
+  Rows    : 100,000,000
+  CSV     : 6.439 GB -> data\dataset_L.csv
+  Parquet : 2.047 GB -> data\dataset_L.parquet
+  Parquet is 68.2% smaller than CSV
+
+Uploading CSV (L)...
+  Uploaded raw/financial_L/csv/dataset_L.csv | 6438.9 MB | 5.25 MB/s | 1168.6s
+
+Uploading Parquet (L)...
+  Uploaded curated/financial_L/parquet/dataset_L.parquet | 2046.5 MB | 7.65 MB/s | 255.2s
+
+Downloading CSV (L)...
+  Downloaded raw/financial_L/csv/dataset_L.csv | 6438.9 MB | 4.38 MB/s | 1401.9s
+
+Downloading Parquet (L)...
+  Downloaded curated/financial_L/parquet/dataset_L.parquet | 2046.5 MB | 5.03 MB/s | 388.0s
+
+Listing prefixes...
+  CSV listing    : 1.160s
+  Parquet listing: 0.035s
+
+Running analytics queries...
+Traceback (most recent call last):
+  File "C:\Users\salsa\Documents\UNINE BA6\Cloud\CCBD-variant1\bench.py", line 174, in <module>
+    run_benchmark(args.size, skip_generate=args.skip_generate, skip_upload=args.skip_upload)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\salsa\Documents\UNINE BA6\Cloud\CCBD-variant1\bench.py", line 120, in run_benchmark
+    csv_query_time, csv_rows = run_query_csv("temp_query.csv")
+                               ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\Users\salsa\Documents\UNINE BA6\Cloud\CCBD-variant1\bench.py", line 61, in run_query_csv
+    df = pd.read_csv(local_path, parse_dates=["ts"])
+  File "C:\Users\salsa\Documents\UNINE BA6\Cloud\CCBD-variant1\.venv\Lib\site-packages\pandas\io\parsers\readers.py", line 873, in read_csv
+    return _read(filepath_or_buffer, kwds)
+  File "C:\Users\salsa\Documents\UNINE BA6\Cloud\CCBD-variant1\.venv\Lib\site-packages\pandas\io\parsers\readers.py", line 306, in _read
+    return parser.read(nrows)
+           ~~~~~~~~~~~^^^^^^^
+  File "C:\Users\salsa\Documents\UNINE BA6\Cloud\CCBD-variant1\.venv\Lib\site-packages\pandas\io\parsers\readers.py", line 1992, in read
+    df = DataFrame(
+        new_col_dict,
+    ...<2 lines>...
+        copy=False,
+    )
+  File "C:\Users\salsa\Documents\UNINE BA6\Cloud\CCBD-variant1\.venv\Lib\site-packages\pandas\core\frame.py", line 769, in __init__
+    mgr = dict_to_mgr(data, index, columns, dtype=dtype, copy=copy)
+  File "C:\Users\salsa\Documents\UNINE BA6\Cloud\CCBD-variant1\.venv\Lib\site-packages\pandas\core\internals\construction.py", line 460, in dict_to_mgr
+    return arrays_to_mgr(arrays, columns, index, dtype=dtype, consolidate=copy)
+  File "C:\Users\salsa\Documents\UNINE BA6\Cloud\CCBD-variant1\.venv\Lib\site-packages\pandas\core\internals\construction.py", line 118, in arrays_to_mgr
+    arrays, refs = _homogenize(arrays, index, dtype)
+                   ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\salsa\Documents\UNINE BA6\Cloud\CCBD-variant1\.venv\Lib\site-packages\pandas\core\internals\construction.py", line 596, in _homogenize
+    val = sanitize_array(val, index, dtype=dtype, copy=False)
+  File "C:\Users\salsa\Documents\UNINE BA6\Cloud\CCBD-variant1\.venv\Lib\site-packages\pandas\core\construction.py", line 616, in sanitize_array
+    subarr = lib.maybe_convert_objects(
+        data,
+    ...<5 lines>...
+        dtype_if_all_nat=np.dtype("M8[s]"),
+    )
+  File "pandas/_libs/lib.pyx", line 2825, in pandas._libs.lib.maybe_convert_objects
+  File "C:\Users\salsa\Documents\UNINE BA6\Cloud\CCBD-variant1\.venv\Lib\site-packages\pandas\core\arrays\string_arrow.py", line 239, in _from_sequence
+    pa_arr = pa.array(result, type=pa.large_string(), from_pandas=True)
+  File "pyarrow/array.pxi", line 365, in pyarrow.lib.array
+  File "pyarrow/array.pxi", line 91, in pyarrow.lib._ndarray_to_array
+  File "pyarrow/error.pxi", line 92, in pyarrow.lib.check_status
+pyarrow.lib.ArrowMemoryError: realloc of size 268435456 failed
+(.venv) PS C:\Users\salsa\Documents\UNINE BA6\Cloud\CCBD-variant1> 
