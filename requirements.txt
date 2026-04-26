@@ -4,8 +4,10 @@ pandas
 matplotlib
 python-dotenv
 azure-storage-blob
-
+jupyter 
+ipykernel
 
 # Make sure Docker is installed !
 # pip install boto3 pyarrow pandas matplotlib python-dotenv azure-storage-blob
 # python.exe -m pip install --upgrade pip
+# .venv\Scripts\python -m pip install jupyter ipykernel
