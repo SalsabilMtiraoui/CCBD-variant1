@@ -1,0 +1,38 @@
+
+============================================================
+BENCHMARK SIZE S
+============================================================
+
+Uploading CSV (S)...
+  Uploaded raw/financial_S/csv/dataset_S.csv | 322.0 MB | 0.71 MB/s | 429.8s
+
+Uploading Parquet (S)...
+  Uploaded curated/financial_S/parquet/dataset_S.parquet | 102.3 MB | 0.89 MB/s | 109.8s
+
+Downloading CSV (S)...
+  Downloaded raw/financial_S/csv/dataset_S.csv | 322.0 MB | 7.47 MB/s | 41.1s
+
+Downloading Parquet (S)...
+  Downloaded curated/financial_S/parquet/dataset_S.parquet | 102.3 MB | 5.45 MB/s | 17.9s
+
+Listing prefixes...
+  CSV listing    : 0.362s
+  Parquet listing: 0.051s
+
+Running analytics queries...
+  CSV query done: 246,389 rows in 4.90s
+            count          mean
+event_type                     
+deposit     61580  25030.161022
+payment     61398  24984.107931
+transfer    61841  24938.040672
+withdrawal  61570  24996.450586
+  Parquet query: 246,389 rows in 0.06s
+            count          mean
+event_type                     
+deposit     61580  25030.161022
+payment     61398  24984.107931
+transfer    61841  24938.040672
+withdrawal  61570  24996.450586
+
+Results saved to results\results.csv
