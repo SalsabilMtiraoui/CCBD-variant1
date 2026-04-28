@@ -543,3 +543,41 @@ Traceback (most recent call last):
   File "pyarrow/error.pxi", line 92, in pyarrow.lib.check_status
 pyarrow.lib.ArrowMemoryError: realloc of size 268435456 failed
 (.venv) PS C:\Users\salsa\Documents\UNINE BA6\Cloud\CCBD-variant1> 
+
+
+
+
+
+------------------------------------------------------------------------------------------------
+PS C:\Users\salsa\Documents\UNINE BA6\Cloud\CCBD-variant1> (Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned) ; (& "c:\Users\salsa\Documents\UNINE BA6\Cloud\CCBD-variant1\.venv\Scripts\Activate.ps1")
+(.venv) PS C:\Users\salsa\Documents\UNINE BA6\Cloud\CCBD-variant1> .venv\Scripts\python bench.py --size L --skip-generate --skip-upload
+
+============================================================
+BENCHMARK SIZE L
+============================================================
+
+Downloading CSV (L)...
+  Downloaded raw/financial_L/csv/dataset_L.csv | 6438.9 MB | 3.32 MB/s | 1852.1s
+
+Downloading Parquet (L)...
+  Downloaded curated/financial_L/parquet/dataset_L.parquet | 2046.5 MB | 4.97 MB/s | 392.5s
+
+Listing prefixes...
+  CSV listing    : 1.135s
+  Parquet listing: 0.034s
+
+Running analytics queries...
+  CSV query done: 4,931,740 rows in 456.03s
+              count          mean
+event_type                       
+deposit     1232444  25001.522784
+payment     1231573  24998.127479
+transfer    1234279  25014.120080
+withdrawal  1233444  25003.112122
+  Parquet query: 4,931,740 rows in 8.11s
+              count          mean
+event_type                       
+deposit     1232444  25001.522784
+payment     1231573  24998.127479
+transfer    1234279  25014.120080
+withdrawal  1233444  25003.112122
