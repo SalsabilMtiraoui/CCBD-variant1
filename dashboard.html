@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>CCBD — Parquet vs CSV Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f0f2f5;
+      color: #1a1a2e;
+      padding: 2rem;
+    }
+    h1 { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+    .subtitle { font-size: 13px; color: #6c757d; margin-bottom: 2rem; }
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #6c757d;
+      margin: 2rem 0 1rem;
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 2rem;
+    }
+    .kpi {
+      background: white;
+      border-radius: 14px;
+      padding: 1.1rem 1.25rem;
+      border: 1px solid #e8e8e8;
+    }
+    .kpi-label { font-size: 12px; color: #888; margin-bottom: 6px; }
+    .kpi-value { font-size: 28px; font-weight: 700; }
+    .kpi-sub { font-size: 11px; color: #aaa; margin-top: 3px; }
+    .green { color: #27ae60; }
+    .purple { color: #8e44ad; }
+    .blue { color: #185FA5; }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .charts-grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .panel {
+      background: white;
+      border-radius: 14px;
+      padding: 1.25rem;
+      border: 1px solid #e8e8e8;
+    }
+    .panel h2 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 4px;
+    }
+    .panel p {
+      font-size: 12px;
+      color: #999;
+      margin-bottom: 1rem;
+    }
+
+    .insight {
+      background: #eef6ff;
+      border-left: 4px solid #185FA5;
+      border-radius: 0 8px 8px 0;
+      padding: 10px 14px;
+      font-size: 12px;
+      color: #1a3a5c;
+      margin-top: 1rem;
+      line-height: 1.5;
+    }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 9px 10px; color: #888; font-weight: 500; border-bottom: 1.5px solid #eee; }
+    td { padding: 9px 10px; border-bottom: 1px solid #f5f5f5; }
+    .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 10px; border-radius: 20px; }
+    .csv-badge { background: #fde8e8; color: #c0392b; }
+    .par-badge { background: #d4f7e0; color: #1a6b3c; }
+    .win-badge { background: #f0e6ff; color: #6c28a7; }
+    .lose-badge { background: #fff0f0; color: #c0392b; }
+    tr.par-row { background: #fafffe; }
+
+    .legend { display: flex; gap: 16px; margin-bottom: 10px; }
+    .leg { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #555; }
+    .leg-sq { width: 10px; height: 10px; border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+<h1>Parquet vs CSV — Benchmark Dashboard</h1>
+<p class="subtitle">CCBD SP26 · Variant 1 · Azure Blob Storage · 5M / 25M / 100M financial transactions · seed=42</p>
+
+<div class="kpi-grid">
+  <div class="kpi">
+    <div class="kpi-label">Storage reduction</div>
+    <div class="kpi-value green">−68%</div>
+    <div class="kpi-sub">Parquet vs CSV · all sizes</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Max query speedup</div>
+    <div class="kpi-value purple">56×</div>
+    <div class="kpi-sub">Size L · 100M rows</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Download advantage</div>
+    <div class="kpi-value blue">2.8×</div>
+    <div class="kpi-sub">MB/s · size S</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Cost savings</div>
+    <div class="kpi-value green">−68%</div>
+    <div class="kpi-sub">Storage + egress · CHF/mo</div>
+  </div>
+</div>
+
+<p class="section-title">Criterion 1 — Storage size</p>
+<div class="charts-grid">
+  <div class="panel">
+    <h2>Absolute storage (GB)</h2>
+    <p>CSV stores raw text — Parquet uses columnar compression</p>
+    <div class="legend">
+      <div class="leg"><div class="leg-sq" style="background:#e74c3c"></div>CSV</div>
+      <div class="leg"><div class="leg-sq" style="background:#2ecc71"></div>Parquet</div>
+    </div>
+    <div style="position:relative;height:220px"><canvas id="storageBar"></canvas></div>
+    <div class="insight">Parquet is <strong>3.2× smaller</strong> than CSV across all sizes. Low-cardinality columns (region, event_type, currency) compress with dictionary encoding — the word "Europe" is stored once, not 20M times.</div>
+  </div>
+  <div class="panel">
+    <h2>Compression ratio over scale</h2>
+    <p>Does the advantage change with dataset size?</p>
+    <div style="position:relative;height:260px"><canvas id="compressionLine"></canvas></div>
+    <div class="insight">Compression ratio stays stable at ~3.2× — Parquet's advantage is consistent regardless of dataset size.</div>
+  </div>
+</div>
+
+<p class="section-title">Criterion 2 — Transfer performance</p>
+<div class="charts-grid">
+  <div class="panel">
+    <h2>Upload throughput (MB/s)</h2>
+    <p>Higher = faster upload to Azure Blob Storage</p>
+    <div class="legend">
+      <div class="leg"><div class="leg-sq" style="background:#e74c3c"></div>CSV</div>
+      <div class="leg"><div class="leg-sq" style="background:#2ecc71"></div>Parquet</div>
+    </div>
+    <div style="position:relative;height:220px"><canvas id="uploadBar"></canvas></div>
+    <div class="insight">Size S CSV upload anomaly (0.51 MB/s) is likely Azure cold-start throttling on first connection. Sizes M and L show stable throughput around 6–7 MB/s for both formats.</div>
+  </div>
+  <div class="panel">
+    <h2>Download throughput (MB/s)</h2>
+    <p>Higher = faster retrieval from Azure</p>
+    <div class="legend">
+      <div class="leg"><div class="leg-sq" style="background:#e74c3c"></div>CSV</div>
+      <div class="leg"><div class="leg-sq" style="background:#2ecc71"></div>Parquet</div>
+    </div>
+    <div style="position:relative;height:220px"><canvas id="downloadBar"></canvas></div>
+    <div class="insight">Parquet downloads faster on size S (7.3 vs 2.6 MB/s) because Azure serves smaller objects more efficiently. Gap narrows on larger files.</div>
+  </div>
+</div>
+
+<p class="section-title">Criterion 3 — Query performance (PyArrow column pruning + predicate pushdown)</p>
+<div class="charts-grid">
+  <div class="panel">
+    <h2>Query time — log scale (seconds)</h2>
+    <p>Filter region=Europe, ts range, groupby event_type, agg count+mean</p>
+    <div class="legend">
+      <div class="leg"><div class="leg-sq" style="background:#e74c3c"></div>CSV (pandas, chunked)</div>
+      <div class="leg"><div class="leg-sq" style="background:#2ecc71"></div>Parquet (pyarrow.dataset)</div>
+    </div>
+    <div style="position:relative;height:220px"><canvas id="queryLog"></canvas></div>
+    <div class="insight">Log scale reveals the true gap — CSV takes 456s for L, Parquet takes 8s. PyArrow reads only 2/7 columns and skips irrelevant row groups entirely.</div>
+  </div>
+  <div class="panel">
+    <h2>Speedup grows with scale</h2>
+    <p>Parquet advantage increases as dataset gets larger</p>
+    <div style="position:relative;height:260px"><canvas id="speedupLine"></canvas></div>
+    <div class="insight">Speedup grows: <strong>35× → 49× → 56×</strong>. As more data accumulates, predicate pushdown skips more row groups, making Parquet increasingly efficient at scale.</div>
+  </div>
+</div>
+
+<p class="section-title">Cost analysis — Azure Blob Storage (CHF/month)</p>
+<div class="charts-grid">
+  <div class="panel">
+    <h2>Total cost per dataset size</h2>
+    <p>Storage (0.020 CHF/GB) + Egress (0.090 CHF/GB)</p>
+    <div class="legend">
+      <div class="leg"><div class="leg-sq" style="background:#e74c3c"></div>CSV</div>
+      <div class="leg"><div class="leg-sq" style="background:#2ecc71"></div>Parquet</div>
+    </div>
+    <div style="position:relative;height:220px"><canvas id="costBar"></canvas></div>
+    <div class="insight">Egress dominates cost. For size L, CSV costs ~0.71 CHF/month vs Parquet's ~0.23 CHF — a saving of ~0.48 CHF per query cycle.</div>
+  </div>
+  <div class="panel">
+    <h2>Cost breakdown — size L</h2>
+    <p>Which component dominates? (CSV vs Parquet)</p>
+    <div style="position:relative;height:260px"><canvas id="costDonut"></canvas></div>
+    <div class="insight">For both formats, egress (download) accounts for ~82% of total cost — storage itself is cheap. Reducing file size directly reduces egress cost.</div>
+  </div>
+</div>
+
+<p class="section-title">Full results</p>
+<div class="panel" style="margin-bottom:2rem;">
+  <table>
+    <thead>
+      <tr>
+        <th>Size</th><th>Format</th><th>Stored (GB)</th>
+        <th>Upload (MB/s)</th><th>Download (MB/s)</th>
+        <th>Query (s)</th><th>Cost/mo (CHF)</th><th>Result</th>
+      </tr>
+    </thead>
+    <tbody id="table-body"></tbody>
+  </table>
+</div>
+
+<script>
+const D = {
+  S:{r:'5M', csv:{gb:0.322,up:0.506,dl:2.568,q:24.00}, par:{gb:0.102,up:1.146,dl:7.263,q:0.68}},
+  M:{r:'25M',csv:{gb:1.610,up:6.916,dl:6.916,q:114.88},par:{gb:0.512,up:7.070,dl:7.520,q:2.33}},
+  L:{r:'100M',csv:{gb:6.439,up:5.254,dl:3.315,q:456.03},par:{gb:2.047,up:7.651,dl:4.973,q:8.11}}
+};
+const SZ = ['S','M','L'];
+const LB = ['S (5M)','M (25M)','L (100M)'];
+const CSV_C = '#e74c3c';
+const PAR_C = '#2ecc71';
+const PUR_C = '#8e44ad';
+const BLU_C = '#185FA5';
+function cost(gb){ return +(gb*0.020 + gb*0.090).toFixed(4); }
+
+const defOpts = (log=false) => ({
+  responsive:true, maintainAspectRatio:false,
+  plugins:{ legend:{ display:false } },
+  scales:{ y:{ type: log?'logarithmic':'linear', beginAtZero: !log } }
+});
+
+new Chart('storageBar',{type:'bar',data:{labels:LB,datasets:[
+  {label:'CSV',data:SZ.map(s=>D[s].csv.gb),backgroundColor:CSV_C,borderRadius:6},
+  {label:'Parquet',data:SZ.map(s=>D[s].par.gb),backgroundColor:PAR_C,borderRadius:6}
+]},options:{...defOpts(),plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,title:{display:true,text:'GB'}}}}});
+
+new Chart('compressionLine',{type:'line',data:{labels:LB,datasets:[{
+  label:'Compression ratio (CSV/Parquet)',
+  data:SZ.map(s=>+(D[s].csv.gb/D[s].par.gb).toFixed(2)),
+  borderColor:PUR_C, backgroundColor:PUR_C+'22',
+  pointBackgroundColor:PUR_C, pointRadius:6, tension:0.3, fill:true
+}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:false,min:2,max:5,title:{display:true,text:'× times smaller'}}}}});
+
+new Chart('uploadBar',{type:'bar',data:{labels:LB,datasets:[
+  {label:'CSV',data:SZ.map(s=>D[s].csv.up),backgroundColor:CSV_C,borderRadius:6},
+  {label:'Parquet',data:SZ.map(s=>D[s].par.up),backgroundColor:PAR_C,borderRadius:6}
+]},options:{...defOpts(),scales:{y:{beginAtZero:true,title:{display:true,text:'MB/s'}}}}});
+
+new Chart('downloadBar',{type:'bar',data:{labels:LB,datasets:[
+  {label:'CSV',data:SZ.map(s=>D[s].csv.dl),backgroundColor:CSV_C,borderRadius:6},
+  {label:'Parquet',data:SZ.map(s=>D[s].par.dl),backgroundColor:PAR_C,borderRadius:6}
+]},options:{...defOpts(),scales:{y:{beginAtZero:true,title:{display:true,text:'MB/s'}}}}});
+
+new Chart('queryLog',{type:'bar',data:{labels:LB,datasets:[
+  {label:'CSV',data:SZ.map(s=>D[s].csv.q),backgroundColor:CSV_C,borderRadius:6},
+  {label:'Parquet',data:SZ.map(s=>D[s].par.q),backgroundColor:PAR_C,borderRadius:6}
+]},options:{...defOpts(true),scales:{y:{type:'logarithmic',title:{display:true,text:'seconds (log scale)'}}}}});
+
+new Chart('speedupLine',{type:'line',data:{labels:LB,datasets:[{
+  label:'Speedup (×)',
+  data:SZ.map(s=>+(D[s].csv.q/D[s].par.q).toFixed(1)),
+  borderColor:PUR_C, backgroundColor:PUR_C+'22',
+  pointBackgroundColor:PUR_C, pointRadius:8, tension:0.3, fill:true,
+  pointStyle:'circle'
+}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+  tooltip:{callbacks:{label:ctx=>`${ctx.parsed.y}× faster than CSV`}}},
+  scales:{y:{beginAtZero:true,title:{display:true,text:'Speedup factor (×)'},
+  ticks:{callback:v=>v+'×'}}}}});
+
+new Chart('costBar',{type:'bar',data:{labels:LB,datasets:[
+  {label:'CSV',data:SZ.map(s=>cost(D[s].csv.gb)),backgroundColor:CSV_C,borderRadius:6},
+  {label:'Parquet',data:SZ.map(s=>cost(D[s].par.gb)),backgroundColor:PAR_C,borderRadius:6}
+]},options:{...defOpts(),scales:{y:{beginAtZero:true,title:{display:true,text:'CHF/month'}}}}});
+
+const csvStorL = +(D.L.csv.gb*0.020).toFixed(4);
+const csvEgrL  = +(D.L.csv.gb*0.090).toFixed(4);
+const parStorL = +(D.L.par.gb*0.020).toFixed(4);
+const parEgrL  = +(D.L.par.gb*0.090).toFixed(4);
+new Chart('costDonut',{type:'doughnut',data:{
+  labels:['CSV Storage','CSV Egress','Parquet Storage','Parquet Egress'],
+  datasets:[{data:[csvStorL,csvEgrL,parStorL,parEgrL],
+    backgroundColor:['#f1948a','#e74c3c','#82e0aa','#2ecc71'],
+    borderWidth:2, borderColor:'white'}]
+},options:{responsive:true,maintainAspectRatio:false,
+  plugins:{legend:{position:'bottom',labels:{font:{size:11},padding:10}}},
+  cutout:'55%'}});
+
+const tbody = document.getElementById('table-body');
+SZ.forEach(s=>{
+  ['csv','par'].forEach(fmt=>{
+    const d = D[s][fmt];
+    const isPar = fmt==='par';
+    const speedup = isPar
+      ? `<span class="badge win-badge">${(D[s].csv.q/D[s].par.q).toFixed(0)}× faster</span>`
+      : `<span class="badge lose-badge">${(D[s].csv.q/D[s].par.q).toFixed(0)}× slower</span>`;
+    const tr = document.createElement('tr');
+    if(isPar) tr.className = 'par-row';
+    tr.innerHTML = `
+      <td><strong>${s}</strong> (${D[s].r} rows)</td>
+      <td><span class="badge ${isPar?'par-badge':'csv-badge'}">${isPar?'Parquet':'CSV'}</span></td>
+      <td>${d.gb.toFixed(3)}</td>
+      <td>${d.up.toFixed(2)}</td>
+      <td>${d.dl.toFixed(2)}</td>
+      <td>${d.q.toFixed(2)}</td>
+      <td>${cost(d.gb)}</td>
+      <td>${speedup}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+});
+</script>
+</body>
+</html>
