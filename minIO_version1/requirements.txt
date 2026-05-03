@@ -1,0 +1,9 @@
+boto3              # S3 API client to upload/download data 
+pyarrow            # Read/write Parquet files 
+pandas            
+matplotlib         
+python-dotenv      # Manage credentials and configuration (e.g., S3 keys) via .env file
+jupyter            
+ipykernel          
+tqdm               # Progress bars for uploads/downloads and long-running scripts
+azure-storage-blob

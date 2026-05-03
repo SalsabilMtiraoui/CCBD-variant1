@@ -1,0 +1,7 @@
+storage,size,file_type,objects,stored_bytes,upload_seconds,upload_mbps,download_seconds,download_mbps,listing_seconds,query_seconds
+minio,S,csv,1,240392930,0.381,630.962,0.273,879.416,0.002,3.661
+minio,S,parquet,1,90289418,0.232,389.726,0.081,1117.598,0.002,0.098
+minio,M,csv,1,1201964947,1.378,872.319,1.092,1101.186,0.002,18.19
+minio,M,parquet,1,451444988,0.573,787.265,0.513,879.235,0.002,0.433
+minio,L,csv,1,4807834643,4.55,1056.609,4.595,1046.267,0.004,72.225
+minio,L,parquet,1,1805804060,1.858,971.973,1.659,1088.43,0.002,1.625
