@@ -86,7 +86,7 @@ def run_query_csv(local_path):
     print(combined)
     return elapsed, total_rows
 
-def run_benchmark(size_label, skip_generate=False, skip_upload=False):
+def run_benchmark(size_label, skip_generate=False, skip_upload=False, skip_download=False):
     print(f"\n{'='*60}")
     print(f"BENCHMARK SIZE {size_label}")
     print(f"{'='*60}")
@@ -127,14 +127,31 @@ def run_benchmark(size_label, skip_generate=False, skip_upload=False):
     print(f"\nRunning analytics queries...")
 
     # Download CSV pour query
-    blob = client.get_blob_client(
-        container=BUCKET,
-        blob=f"raw/{dataset_id}/csv/dataset_{size_label}.csv"
-    )
-    with open("temp_query.csv", "wb") as f:
-        f.write(blob.download_blob().readall())
-    csv_query_time, csv_rows = run_query_csv("temp_query.csv")
-    os.remove("temp_query.csv")
+
+# 5. Query
+    print(f"\nRunning analytics queries...")
+
+    csv_local = f"data/dataset_{size_label}.csv"
+    parquet_local = f"data/dataset_{size_label}.parquet"
+
+    if skip_download and os.path.exists(csv_local) and os.path.exists(parquet_local):
+        print(f"  Using local files (--skip-download)")
+        csv_query_time, csv_rows = run_query_csv(csv_local)
+        parquet_query_time, parquet_rows = run_query_parquet(parquet_local)
+    else:
+        download_for_query(
+            f"raw/{dataset_id}/csv/dataset_{size_label}.csv",
+            "temp_query.csv"
+        )
+        csv_query_time, csv_rows = run_query_csv("temp_query.csv")
+        os.remove("temp_query.csv")
+
+        download_for_query(
+            f"curated/{dataset_id}/parquet/dataset_{size_label}.parquet",
+            "temp_query.parquet"
+        )
+        parquet_query_time, parquet_rows = run_query_parquet("temp_query.parquet")
+        os.remove("temp_query.parquet")
 
     # Download Parquet pour query
     blob = client.get_blob_client(
@@ -186,5 +203,12 @@ if __name__ == "__main__":
     parser.add_argument("--size", choices=["S", "M", "L"], default="S")
     parser.add_argument("--skip-generate", action="store_true")
     parser.add_argument("--skip-upload", action="store_true")
+    parser.add_argument("--skip-download", action="store_true",
+                        help="Use local files for query instead of downloading from Azure")
     args = parser.parse_args()
-    run_benchmark(args.size, skip_generate=args.skip_generate, skip_upload=args.skip_upload)
+    run_benchmark(
+        args.size,
+        skip_generate=args.skip_generate,
+        skip_upload=args.skip_upload,
+        skip_download=args.skip_download
+    )
