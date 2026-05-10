@@ -1,53 +1,101 @@
-import os
+from pathlib import Path
 import time
 import argparse
-from s3_client import get_s3_client, get_bucket_name
-from dotenv import load_dotenv
 
-load_dotenv()
-client = get_s3_client()
-BUCKET = get_bucket_name()
+from config import get_bucket_name, get_s3_client, get_azure_container_client
 
-def upload_file(local_path, blob_key):
-    file_size = os.path.getsize(local_path)
-    blob_client = client.get_blob_client(container=BUCKET, blob=blob_key)
+
+def dataset_path(size, file_type):
+    if file_type == "csv":
+        return Path(f"data/raw/data_{size}/csv"), f"raw/data_{size}/csv"
+    return Path(f"data/curated/data_{size}/parquet"), f"curated/data_{size}/parquet"
+
+
+def list_remote(storage, prefix):
+    if storage in ["minio", "aws"]:
+        s3, bucket = get_s3_client(storage), get_bucket_name(storage)
+        return [o["Key"] for o in s3.list_objects_v2(Bucket=bucket, Prefix=prefix).get("Contents", [])]
+
+    container = get_azure_container_client()
+    return [b.name for b in container.list_blobs(name_starts_with=prefix)]
+
+
+def delete_prefix(storage, prefix):
+    names = list_remote(storage, prefix)
+
+    if storage in ["minio", "aws"]:
+        s3, bucket = get_s3_client(storage), get_bucket_name(storage)
+        for name in names:
+            s3.delete_object(Bucket=bucket, Key=name)
+    else:
+        container = get_azure_container_client()
+        for name in names:
+            container.delete_blob(name)
+
+    return len(names)
+
+
+def upload_file(storage, local_file, remote_name):
+    if storage in ["minio", "aws"]:
+        s3, bucket = get_s3_client(storage), get_bucket_name(storage)
+        s3.upload_file(str(local_file), bucket, remote_name)
+    else:
+        container = get_azure_container_client()
+        blob_client = container.get_blob_client(remote_name)
+        with open(local_file, "rb") as f:
+            blob_client.upload_blob(f, overwrite=True)
+
+
+def upload_dataset(storage, size, file_type, clean=False, verbose=True):
+    local_dir, prefix = dataset_path(size, file_type)
+
+    if clean:
+        deleted = delete_prefix(storage, prefix)
+        if verbose:
+            print(f"Deleted {deleted} old objects from {prefix} \n")
+
+    files = [p for p in local_dir.rglob("*") if p.is_file()]
+    total_bytes = sum(p.stat().st_size for p in files)
+
     start = time.time()
-    with open(local_path, "rb") as f:
-        blob_client.upload_blob(f, overwrite=True)
-    elapsed = time.time() - start
-    throughput = (file_size / (1024 * 1024)) / elapsed
-    print(f"  Uploaded {blob_key} | {file_size/10**6:.1f} MB | {throughput:.2f} MB/s | {elapsed:.1f}s")
-    return throughput, elapsed, file_size
 
-def upload_dataset(size_label, data_dir="data"):
-    csv_path = os.path.join(data_dir, f"dataset_{size_label}.csv")
-    parquet_path = os.path.join(data_dir, f"dataset_{size_label}.parquet")
-    dataset_id = f"financial_{size_label}"
+    for p in files:
+        remote_name = f"{prefix}/{p.relative_to(local_dir).as_posix()}"
+        file_start = time.time()
+        upload_file(storage, p, remote_name)
 
-    results = {}
+        if verbose:
+            sec = time.time() - file_start
+            mb = p.stat().st_size / (1024 ** 2)
+            print(f"Uploaded {p.name}: {mb:.1f} MB in {sec:.2f}s")
 
-    print(f"\nUploading CSV ({size_label})...")
-    tp, elapsed, size = upload_file(
-        csv_path,
-        f"raw/{dataset_id}/csv/dataset_{size_label}.csv"
-    )
-    results["csv_upload_throughput_MBs"] = round(tp, 3)
-    results["csv_upload_time_s"] = round(elapsed, 3)
-    results["csv_size_bytes"] = size
+    seconds = time.time() - start
+    mbps = (total_bytes / (1024 ** 2)) / seconds if seconds else 0
 
-    print(f"\nUploading Parquet ({size_label})...")
-    tp, elapsed, size = upload_file(
-        parquet_path,
-        f"curated/{dataset_id}/parquet/dataset_{size_label}.parquet"
-    )
-    results["parquet_upload_throughput_MBs"] = round(tp, 3)
-    results["parquet_upload_time_s"] = round(elapsed, 3)
-    results["parquet_size_bytes"] = size
+    return total_bytes, len(files), seconds, mbps, prefix
 
-    return results
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--size", choices=["S", "M", "L"], default="S")
+    parser.add_argument("--storage", default="minio", choices=["minio", "aws", "azure"])
+    parser.add_argument("--size", default="S")
+    parser.add_argument("--file-type", default="csv", choices=["csv", "parquet"])
+    parser.add_argument("--clean", action="store_true")
+    parser.add_argument("--quiet", action="store_true")
+
     args = parser.parse_args()
-    upload_dataset(args.size)
+
+    total_bytes, n_files, seconds, mbps, prefix = upload_dataset(
+        storage=args.storage,
+        size=args.size.upper(),
+        file_type=args.file_type,
+        clean=args.clean,
+        verbose=not args.quiet,
+    )
+
+    print("\nUpload complete:")
+    print(f"  Prefix  : {prefix}")
+    print(f"  Files   : {n_files}")
+    print(f"  Size    : {total_bytes / (1024 ** 2):.1f} MB")
+    print(f"  Time    : {seconds:.2f}s")
+    print(f"  Speed   : {mbps:.1f} MB/s")

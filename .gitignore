@@ -1,8 +1,8 @@
+.env
+data/
 __pycache__/
 *.pyc
-.env
+.ipynb_checkpoints/
 .venv/
-results/
-*.parquet
-*.csv
-data/
+venv/
+*.zip

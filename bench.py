@@ -1,190 +1,327 @@
-#Serves to complete/do the benchmarks
-
-import os
-import time
-import csv
 import argparse
+import csv
+import os
+import shutil
+import time
+from pathlib import Path
+from urllib.parse import urlparse
+
 import pandas as pd
+import pyarrow as pa
+import pyarrow.csv as pacsv
 import pyarrow.dataset as ds
-from s3_client import get_s3_client, get_bucket_name
-from upload import upload_dataset
-from download import download_dataset
+import pyarrow.fs as pafs
+
 from dataset_gen import generate_dataset
-from dotenv import load_dotenv
+from upload import upload_dataset
+from download import download_dataset, list_remote
+from config import get_bucket_name
 
-load_dotenv()
-client = get_s3_client()
-BUCKET = get_bucket_name()
 
-RESULTS_DIR = "results"
-RESULTS_FILE = os.path.join(RESULTS_DIR, "results.csv")
-
-FIELDNAMES = [
-    "size", "format",
-    "stored_bytes", "stored_gb",
-    "upload_throughput_MBs", "upload_time_s",
-    "download_throughput_MBs", "download_time_s",
-    "listing_time_s",
-    "query_time_s", "query_rows_returned",
+FIELDS = [
+    "bench_ts", "storage", "size", "file_type", "operation",
+    "objects", "size_mb",
+    "generate_seconds", "generate_mbps",
+    "upload_seconds", "upload_mbps",
+    "download_seconds", "download_mbps",
+    "list_seconds",
+    "query_filter_region", "query_start_ts", "query_end_ts", "query_grouped_by",
+    "query_seconds", "query_rows", "query_result_groups",
 ]
 
-def run_listing(prefix):
-    container_client = client.get_container_client(BUCKET)
-    start = time.time()
-    blobs = list(container_client.list_blobs(name_starts_with=prefix))
-    elapsed = time.time() - start
-    return elapsed, len(blobs)
+FILE_TYPES = ["csv", "parquet"]
+OPERATIONS = ["generate", "upload", "download", "list", "query"]
 
-def run_query_parquet(local_path):
-    """Requête analytique fixe sur Parquet avec pyarrow.dataset"""
-    import pyarrow.compute as pc
-    dataset = ds.dataset(local_path, format="parquet")
-    start = time.time()
-    table = dataset.to_table(
-        filter=(
-            (ds.field("region") == "Europe") &
-            (ds.field("ts") >= pd.Timestamp("2022-01-01")) &
-            (ds.field("ts") <= pd.Timestamp("2022-06-30"))
-        ),
-        columns=["event_type", "value"]
-    )
-    df = table.to_pandas()
-    result = df.groupby("event_type")["value"].agg(["count", "mean"])
-    elapsed = time.time() - start
-    print(f"  Parquet query: {len(df):,} rows in {elapsed:.2f}s")
-    print(result)
-    return elapsed, len(df)
 
-def run_query_csv(local_path):
-    """Requête analytique sur CSV — lecture par chunks pour gérer les gros fichiers"""
-    start = time.time()
-    results = []
-    total_rows = 0
+# ---------- paths ----------
+ 
+def local_dir(size, file_type):
+    if file_type == "csv":
+        return Path(f"data/raw/data_{size}/csv")
+    return Path(f"data/curated/data_{size}/parquet")
+ 
+ 
+def remote_prefix(size, file_type):
+    if file_type == "csv":
+        return f"raw/data_{size}/csv"
+    return f"curated/data_{size}/parquet"
 
-    for chunk in pd.read_csv(local_path, parse_dates=["ts"], chunksize=500_000):
-        filtered = chunk[
-            (chunk["region"] == "Europe") &
-            (chunk["ts"] >= pd.Timestamp("2022-01-01")) &
-            (chunk["ts"] <= pd.Timestamp("2022-06-30"))
-        ]
-        if len(filtered) > 0:
-            results.append(
-                filtered.groupby("event_type")["value"].agg(["sum", "count"])
-            )
-        total_rows += len(filtered)
-
-    # Agrège tous les chunks
-    if results:
-        combined = pd.concat(results).groupby("event_type").sum()
-        combined["mean"] = combined["sum"] / combined["count"]
-        combined = combined[["count", "mean"]]
-    else:
-        combined = pd.DataFrame()
-
-    elapsed = time.time() - start
-    print(f"  CSV query done: {total_rows:,} rows in {elapsed:.2f}s")
-    print(combined)
-    return elapsed, total_rows
-
-def run_benchmark(size_label, skip_generate=False, skip_upload=False):
-    print(f"\n{'='*60}")
-    print(f"BENCHMARK SIZE {size_label}")
-    print(f"{'='*60}")
-    os.makedirs(RESULTS_DIR, exist_ok=True)
-
-    dataset_id = f"financial_{size_label}"
-    csv_path = f"data/dataset_{size_label}.csv"
-    parquet_path = f"data/dataset_{size_label}.parquet"
-
-    # 1. Génération
-    if not skip_generate:
-        generate_dataset(size_label)
-
-    # 2. Upload
-    if not skip_upload:
-        upload_results = upload_dataset(size_label)
-    else:
-        upload_results = {
-            "csv_upload_throughput_MBs": None,
-            "csv_upload_time_s": None,
-            "parquet_upload_throughput_MBs": None,
-            "parquet_upload_time_s": None,
-            "csv_size_bytes": os.path.getsize(csv_path) if os.path.exists(csv_path) else None,
-            "parquet_size_bytes": os.path.getsize(parquet_path) if os.path.exists(parquet_path) else None,
-        }
-
-    # 3. Download
-    download_results = download_dataset(size_label)
-
-    # 4. Listing
-    print(f"\nListing prefixes...")
-    csv_list_time, _ = run_listing(f"raw/{dataset_id}/csv/")
-    parquet_list_time, _ = run_listing(f"curated/{dataset_id}/parquet/")
-    print(f"  CSV listing    : {csv_list_time:.3f}s")
-    print(f"  Parquet listing: {parquet_list_time:.3f}s")
-
-    # 5. Query — télécharge temporairement pour la requête
-    print(f"\nRunning analytics queries...")
-
-    # Download CSV pour query
-    blob = client.get_blob_client(
-        container=BUCKET,
-        blob=f"raw/{dataset_id}/csv/dataset_{size_label}.csv"
-    )
-    with open("temp_query.csv", "wb") as f:
-        f.write(blob.download_blob().readall())
-    csv_query_time, csv_rows = run_query_csv("temp_query.csv")
-    os.remove("temp_query.csv")
-
-    # Download Parquet pour query
-    blob = client.get_blob_client(
-        container=BUCKET,
-        blob=f"curated/{dataset_id}/parquet/dataset_{size_label}.parquet"
-    )
-    with open("temp_query.parquet", "wb") as f:
-        f.write(blob.download_blob().readall())
-    parquet_query_time, parquet_rows = run_query_parquet("temp_query.parquet")
-    os.remove("temp_query.parquet")
-
-    # 6. Écriture résultats
-    write_header = not os.path.exists(RESULTS_FILE)
-    with open(RESULTS_FILE, "a", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=FIELDNAMES)
+def parse_azure_connection_string(conn_str):
+    parts = {}
+    for item in conn_str.split(";"):
+        if "=" in item:
+            key, value = item.split("=", 1)
+            parts[key] = value
+    return parts
+ 
+ 
+def folder_stats(path):
+    files = [p for p in path.rglob("*") if p.is_file()] if path.exists() else []
+    total_bytes = sum(p.stat().st_size for p in files)
+    return len(files), total_bytes, total_bytes / (1024 ** 2)
+ 
+ 
+def mbps(total_bytes, seconds):
+    return 0 if seconds == 0 else (total_bytes / (1024 ** 2)) / seconds
+ 
+ 
+# ---------- CSV output ----------
+ 
+def empty_row(bench_ts, storage, size, file_type, operation):
+    row = {k: "" for k in FIELDS}
+    row.update({
+        "bench_ts": bench_ts,
+        "storage": storage,
+        "size": size,
+        "file_type": file_type,
+        "operation": operation,
+    })
+    return row
+ 
+ 
+def write_results(rows, out_file):
+    out_file = Path(out_file)
+    out_file.parent.mkdir(parents=True, exist_ok=True)
+    write_header = not out_file.exists()
+    with open(out_file, "a", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=FIELDS)
         if write_header:
             writer.writeheader()
+        for row in rows:
+            writer.writerow({k: row.get(k, "") for k in FIELDS})
+ 
+ 
+# ---------- endpoint filesystem for query ----------
+ 
+def endpoint_dataset_path(storage, size, file_type):
+    bucket_or_container = get_bucket_name(storage)
+    prefix = remote_prefix(size, file_type)
+ 
+    if storage in ("aws", "minio"):
+        endpoint = os.getenv("MINIO_ENDPOINT") if storage == "minio" else None
+        kwargs = {
+            "access_key": os.getenv("MINIO_ACCESS_KEY") if storage == "minio" else os.getenv("AWS_ACCESS_KEY_ID"),
+            "secret_key": os.getenv("MINIO_SECRET_KEY") if storage == "minio" else os.getenv("AWS_SECRET_ACCESS_KEY"),
+            "region": os.getenv("MINIO_REGION", "eu-central-1") if storage == "minio" else os.getenv("AWS_REGION"),
+        }
+        if endpoint:
+            parsed = urlparse(endpoint)
+            kwargs["endpoint_override"] = parsed.netloc or parsed.path
+            kwargs["scheme"] = parsed.scheme or "http"
+        filesystem = pafs.S3FileSystem(**kwargs)
+        return filesystem, f"{bucket_or_container}/{prefix}"
+ 
+    if storage == "azure":
+        conn = parse_azure_connection_string(os.getenv("AZURE_CONNECTION_STRING", ""))
 
-        writer.writerow({
-            "size": size_label, "format": "csv",
-            "stored_bytes": upload_results.get("csv_size_bytes"),
-            "stored_gb": round(upload_results.get("csv_size_bytes", 0) / 10**9, 3),
-            "upload_throughput_MBs": upload_results.get("csv_upload_throughput_MBs"),
-            "upload_time_s": upload_results.get("csv_upload_time_s"),
-            "download_throughput_MBs": download_results.get("csv_download_throughput_MBs"),
-            "download_time_s": download_results.get("csv_download_time_s"),
-            "listing_time_s": round(csv_list_time, 4),
-            "query_time_s": round(csv_query_time, 4),
-            "query_rows_returned": csv_rows,
-        })
+        filesystem = pafs.AzureFileSystem(
+            account_name=conn.get("AccountName"),
+            account_key=conn.get("AccountKey"),
+        )
 
-        writer.writerow({
-            "size": size_label, "format": "parquet",
-            "stored_bytes": upload_results.get("parquet_size_bytes"),
-            "stored_gb": round(upload_results.get("parquet_size_bytes", 0) / 10**9, 3),
-            "upload_throughput_MBs": upload_results.get("parquet_upload_throughput_MBs"),
-            "upload_time_s": upload_results.get("parquet_upload_time_s"),
-            "download_throughput_MBs": download_results.get("parquet_download_throughput_MBs"),
-            "download_time_s": download_results.get("parquet_download_time_s"),
-            "listing_time_s": round(parquet_list_time, 4),
-            "query_time_s": round(parquet_query_time, 4),
-            "query_rows_returned": parquet_rows,
-        })
+        return filesystem, f"{bucket_or_container}/{prefix}"
+ 
+    raise ValueError(f"Unknown storage: {storage}")
+ 
+ 
+def csv_format():
+    schema = pa.schema([
+        ("ts", pa.timestamp("s")),
+        ("user_id", pa.int64()),
+        ("region", pa.string()),
+        ("event_type", pa.string()),
+        ("value", pa.float64()),
+        ("currency", pa.string()),
+        ("status", pa.string()),
+    ])
+    return ds.CsvFileFormat(
+        convert_options=pacsv.ConvertOptions(column_types=schema)
+    )
+ 
+ 
+# ---------- benchmark steps ----------
+ 
+def bench_generate(size, file_type, clean=False, quiet=False):
+    target_dir = local_dir(size, file_type)
+ 
+    if clean:
+        shutil.rmtree(target_dir, ignore_errors=True)
+ 
+    should_generate = clean or not target_dir.exists()
+ 
+    start = time.time()
+    if should_generate:
+        generate_dataset(label=size, clean=clean, file_type=file_type)
+    seconds = time.time() - start
+ 
+    objects, total_bytes, size_mb = folder_stats(target_dir)
+    if not quiet:
+        print(f"Generated data_{size} ({file_type}) in {seconds:.2f}s")
+ 
+    return {
+        "objects": objects,
+        "size_mb": round(size_mb, 2),
+        "generate_seconds": round(seconds, 3),
+        "generate_mbps": round(mbps(total_bytes, seconds), 2),
+    }
+ 
+ 
+def bench_upload(storage, size, file_type, clean=False, quiet=False):
+    total_bytes, objects, seconds, speed, _ = upload_dataset(
+        storage=storage,
+        size=size,
+        file_type=file_type,
+        clean=clean,
+        verbose=not quiet,
+    )
+    return {
+        "objects": objects,
+        "size_mb": round(total_bytes / (1024 ** 2), 2),
+        "upload_seconds": round(seconds, 3),
+        "upload_mbps": round(speed, 2),
+    }
+ 
+ 
+def bench_download(storage, size, file_type, clean=False, quiet=False):
+    total_bytes, objects, seconds, speed, _ = download_dataset(
+        storage=storage,
+        size=size,
+        file_type=file_type,
+        clean=clean,
+        verbose=not quiet,
+    )
+    return {
+        "objects": objects,
+        "size_mb": round(total_bytes / (1024 ** 2), 2),
+        "download_seconds": round(seconds, 3),
+        "download_mbps": round(speed, 2),
+    }
+ 
+ 
+def bench_list(storage, size, file_type):
+    prefix = remote_prefix(size, file_type)
+    start = time.time()
+    objects = list_remote(storage, prefix)
+    seconds = time.time() - start
+    total_bytes = sum(o["size"] for o in objects)
 
-    print(f"\nResults saved to {RESULTS_FILE}")
+    print(f"Finished listing in {seconds:.2f}s")
+    return {
+        "objects": len(objects),
+        "size_mb": round(total_bytes / (1024 ** 2), 2),
+        "list_seconds": round(seconds, 3),
+    }
+ 
+ 
+def bench_query(
+    storage,
+    size,
+    file_type,
+    region="Eurozone",
+    start_ts="2026-04-10",
+    end_ts="2026-04-20",
+):
+    filesystem, path = endpoint_dataset_path(storage, size, file_type)
+    fmt = "parquet" if file_type == "parquet" else csv_format()
+    dataset = ds.dataset(path, filesystem=filesystem, format=fmt)
+ 
+    filt = (
+        (ds.field("region") == region)
+        & (ds.field("ts") >= pd.Timestamp(start_ts).to_pydatetime())
+        & (ds.field("ts") < pd.Timestamp(end_ts).to_pydatetime())
+    )
+ 
+    start = time.time()
+    table = dataset.to_table(columns=["event_type", "value"], filter=filt)
+    grouped = table.group_by("event_type").aggregate([
+        ("value", "count"),
+        ("value", "mean"),
+    ])
+    seconds = time.time() - start
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run full benchmark CSV vs Parquet")
-    parser.add_argument("--size", choices=["S", "M", "L"], default="S")
-    parser.add_argument("--skip-generate", action="store_true")
-    parser.add_argument("--skip-upload", action="store_true")
+    print(f"\nQuerry results are finished in {seconds:.2f}s:")
+    print(grouped.to_pandas().to_string(index=False))
+ 
+    return {
+        "query_filter_region": region,
+        "query_start_ts": start_ts,
+        "query_end_ts": end_ts,
+        "query_grouped_by": "event_type",
+        "query_seconds": round(seconds, 3),
+        "query_rows": table.num_rows,
+        "query_result_groups": grouped.num_rows,
+    }
+ 
+ 
+# ---------- runner ----------
+ 
+def run_benchmark(
+    storage="minio",
+    size="S",
+    file_type="csv",
+    operations=("all",),
+    clean=False,
+    out_file="results/results.csv",
+    quiet=False,
+):
+    operations = OPERATIONS if "all" in operations else list(operations)
+    size = size.upper()
+ 
+    row = empty_row(
+        bench_ts=pd.Timestamp.now("UTC").isoformat(),
+        storage=storage,
+        size=size,
+        file_type=file_type,
+        operation="+".join(operations),
+    )
+ 
+    if "generate" in operations:
+        row.update(bench_generate(size, file_type, clean=clean, quiet=quiet))
+ 
+    if "upload" in operations:
+        row.update(bench_upload(storage, size, file_type, clean=clean, quiet=quiet))
+ 
+    if "download" in operations:
+        row.update(bench_download(storage, size, file_type, clean=clean, quiet=quiet))
+ 
+    if "list" in operations:
+        row.update(bench_list(storage, size, file_type))
+ 
+    if "query" in operations:
+        row.update(bench_query(storage, size, file_type))
+ 
+    write_results([row], out_file)
+ 
+    if not quiet:
+        print(f"Saved: {storage} {size} {file_type}")
+ 
+    return row
+ 
+ 
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--storage", default="minio", choices=["minio", "aws", "azure"])
+    parser.add_argument("--size", default="S")
+    parser.add_argument("--file-type", default="both", choices=["both"] + FILE_TYPES)
+    parser.add_argument("--operation", nargs="+", default=["all"], choices=["all"] + OPERATIONS)
+    parser.add_argument("--clean", action="store_true")
+    parser.add_argument("--out", default="results/results.csv")
+    parser.add_argument("--quiet", action="store_true")
     args = parser.parse_args()
-    run_benchmark(args.size, skip_generate=args.skip_generate, skip_upload=args.skip_upload)
+ 
+    file_types = FILE_TYPES if args.file_type == "both" else [args.file_type]
+
+    for file_type in file_types:
+        run_benchmark(
+            storage=args.storage,
+            size=args.size.upper(),
+            file_type=file_type,
+            operations=args.operation,
+            clean=args.clean,
+            out_file=args.out,
+            quiet=args.quiet,
+        )
+ 
+ 
+if __name__ == "__main__":
+    main()
