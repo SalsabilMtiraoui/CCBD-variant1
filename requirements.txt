@@ -1,13 +1,9 @@
-boto3
-pyarrow
-pandas
-matplotlib
-python-dotenv
+boto3              # S3 API client to upload/download data 
+pyarrow            # Read/write Parquet files 
+pandas            
+matplotlib         
+python-dotenv      # Manage credentials and configuration (e.g., S3 keys) via .env file
+jupyter            
+ipykernel          
+tqdm               # Progress bars for uploads/downloads and long-running scripts
 azure-storage-blob
-jupyter 
-ipykernel
-
-# Make sure Docker is installed !
-# pip install boto3 pyarrow pandas matplotlib python-dotenv azure-storage-blob
-# python.exe -m pip install --upgrade pip
-# .venv\Scripts\python -m pip install jupyter ipykernel
