@@ -1,325 +1,940 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>CCBD — Parquet vs CSV Dashboard</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #f0f2f5;
-      color: #1a1a2e;
-      padding: 2rem;
-    }
-    h1 { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
-    .subtitle { font-size: 13px; color: #6c757d; margin-bottom: 2rem; }
-    .section-title {
-      font-size: 13px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #6c757d;
-      margin: 2rem 0 1rem;
-    }
-    .kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-      margin-bottom: 2rem;
-    }
-    .kpi {
-      background: white;
-      border-radius: 14px;
-      padding: 1.1rem 1.25rem;
-      border: 1px solid #e8e8e8;
-    }
-    .kpi-label { font-size: 12px; color: #888; margin-bottom: 6px; }
-    .kpi-value { font-size: 28px; font-weight: 700; }
-    .kpi-sub { font-size: 11px; color: #aaa; margin-top: 3px; }
-    .green { color: #27ae60; }
-    .purple { color: #8e44ad; }
-    .blue { color: #185FA5; }
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CCBD SP26 Parquet vs CSV Benchmark</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:       #f0f2f5;
+    --bg2:      #ffffff;
+    --bg3:      #f7f8fa;
+    --border:   #e4e7ed;
+    --border2:  #d0d5de;
+    --text:     #1a1d25;
+    --muted:    #6b7080;
+    --csv:      #e0391a;
+    --par:      #1a8a50;
+    --minio:    #185FA5;
+    --azure:    #c45e0a;
+    --aws:      #7c3aed;
+    --gold:     #b08800;
+    --accent:   #185FA5;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+    overflow-x: hidden;
+    padding: 2rem 1.5rem 4rem;
+  }
 
-    .charts-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-      margin-bottom: 16px;
-    }
-    .charts-grid-3 {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 16px;
-      margin-bottom: 16px;
-    }
-    .panel {
-      background: white;
-      border-radius: 14px;
-      padding: 1.25rem;
-      border: 1px solid #e8e8e8;
-    }
-    .panel h2 {
-      font-size: 14px;
-      font-weight: 600;
-      color: #333;
-      margin-bottom: 4px;
-    }
-    .panel p {
-      font-size: 12px;
-      color: #999;
-      margin-bottom: 1rem;
-    }
+  .wrap { max-width: 1400px; margin: 0 auto; }
 
-    .insight {
-      background: #eef6ff;
-      border-left: 4px solid #185FA5;
-      border-radius: 0 8px 8px 0;
-      padding: 10px 14px;
-      font-size: 12px;
-      color: #1a3a5c;
-      margin-top: 1rem;
-      line-height: 1.5;
-    }
+  /* ── HEADER ── */
+  .header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: start;
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+    padding-bottom: 2rem;
+    border-bottom: 1.5px solid var(--border);
+  }
+  .header-eyebrow {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+  .header h1 {
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(22px, 3.5vw, 38px);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  .header-sub {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 0.5rem;
+    font-family: 'DM Mono', monospace;
+  }
+  .header-meta {
+    text-align: right;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.8;
+  }
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  .badge-accent { background: #dbeafe; color: var(--accent); border: 1px solid #bfdbfe; }
+  .badge-par    { background: #d1fae5; color: var(--par);    border: 1px solid #a7f3d0; }
+  .badge-csv    { background: #fee2e2; color: var(--csv);    border: 1px solid #fecaca; }
 
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th { text-align: left; padding: 9px 10px; color: #888; font-weight: 500; border-bottom: 1.5px solid #eee; }
-    td { padding: 9px 10px; border-bottom: 1px solid #f5f5f5; }
-    .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 10px; border-radius: 20px; }
-    .csv-badge { background: #fde8e8; color: #c0392b; }
-    .par-badge { background: #d4f7e0; color: #1a6b3c; }
-    .win-badge { background: #f0e6ff; color: #6c28a7; }
-    .lose-badge { background: #fff0f0; color: #c0392b; }
-    tr.par-row { background: #fafffe; }
+  /* ── SECTION TITLE ── */
+  .section-head {
+    display: flex; align-items: center; gap: 12px;
+    margin: 2.5rem 0 1.2rem;
+  }
+  .section-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 0.12em;
+    background: #dbeafe;
+    border: 1px solid #bfdbfe;
+    border-radius: 4px;
+    padding: 3px 8px;
+  }
+  .section-head h2 {
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
 
-    .legend { display: flex; gap: 16px; margin-bottom: 10px; }
-    .leg { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #555; }
-    .leg-sq { width: 10px; height: 10px; border-radius: 2px; }
-  </style>
+  /* ── KPI CARDS ── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 2rem;
+  }
+  .kpi {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.1rem 1.25rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--kpi-accent, var(--accent));
+    opacity: 0.85;
+  }
+  .kpi-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+  }
+  .kpi-value {
+    font-family: 'Inter', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--kpi-accent, var(--accent));
+    line-height: 1;
+  }
+  .kpi-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* ── PANELS ── */
+  .panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.25rem 1.5rem;
+  }
+  .panel h3 {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .panel p.desc {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 1rem;
+    font-family: 'DM Mono', monospace;
+  }
+  .chart-wrap { position: relative; }
+
+  /* ── GRID LAYOUTS ── */
+  .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .g13 { display: grid; grid-template-columns: 1fr 3fr; gap: 14px; }
+  @media(max-width: 900px) {
+    .g2,.g3,.g13 { grid-template-columns: 1fr; }
+    .header { grid-template-columns: 1fr; }
+    .header-meta { text-align: left; }
+  }
+
+  /* ── BACKEND TABS ── */
+  .tabs { display: flex; gap: 6px; margin-bottom: 1rem; flex-wrap: wrap; }
+  .tab {
+    padding: 6px 16px; border-radius: 8px;
+    border: 1px solid var(--border2);
+    background: var(--bg2);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    letter-spacing: 0.06em;
+    transition: all 0.15s;
+  }
+  .tab:hover { color: var(--text); border-color: var(--border2); background: var(--bg3); }
+  .tab.active-minio  { background: #dbeafe; color: var(--minio); border-color: #93c5fd; }
+  .tab.active-azure  { background: #ffedd5; color: var(--azure); border-color: #fdba74; }
+  .tab.active-aws    { background: #ede9fe; color: var(--aws);   border-color: #c4b5fd; }
+  .tab.active-all    { background: #dbeafe; color: var(--accent);border-color: #93c5fd; }
+
+  /* ── TABLE ── */
+  .tbl-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead tr { border-bottom: 1.5px solid var(--border2); }
+  th {
+    text-align: left;
+    padding: 8px 10px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+    font-weight: 500;
+  }
+  td { padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  tr:hover td { background: var(--bg3); }
+  .par-row td { background: #f0fdf4; }
+  .chip {
+    display: inline-block;
+    padding: 2px 8px; border-radius: 20px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.05em;
+  }
+  .chip-csv     { background: #fee2e2; color: var(--csv); }
+  .chip-parquet { background: #d1fae5; color: var(--par); }
+  .chip-minio   { background: #dbeafe; color: var(--minio); }
+  .chip-azure   { background: #ffedd5; color: var(--azure); }
+  .chip-aws     { background: #ede9fe; color: var(--aws); }
+  .win { color: var(--par); font-weight: 600; }
+  .lose { color: var(--csv); }
+
+  /* ── LEGEND ── */
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 10px; }
+  .leg { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; }
+  .leg-sq { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+  /* ── INSIGHT BOX ── */
+  .insight {
+    margin-top: 1rem;
+    padding: 10px 14px;
+    border-radius: 0 8px 8px 0;
+    background: #eef6ff;
+    border-left: 3px solid var(--accent);
+    font-size: 12px;
+    color: #1a3a5c;
+    line-height: 1.6;
+    font-family: 'DM Mono', monospace;
+  }
+  .insight strong { color: var(--text); font-weight: 600; }
+
+  /* ── HEATMAP ── */
+  .heatmap { display: grid; gap: 4px; }
+  .hm-row { display: flex; gap: 4px; align-items: center; }
+  .hm-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); width: 100px; flex-shrink: 0; }
+  .hm-cell {
+    flex: 1; height: 44px;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Inter', sans-serif; font-weight: 800; font-size: 14px;
+    transition: transform 0.15s;
+    cursor: default;
+  }
+  .hm-cell:hover { transform: scale(1.05); z-index: 2; }
+  .hm-header { display: flex; gap: 4px; margin-left: 104px; margin-bottom: 4px; }
+  .hm-header span { flex: 1; text-align: center; font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); }
+
+  /* ── DIST BARS ── */
+  .dist-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .dist-bar-label { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); width: 100px; flex-shrink: 0; text-align: right; }
+  .dist-bar-track { flex: 1; height: 22px; background: var(--bg3); border-radius: 4px; overflow: hidden; position: relative; border: 1px solid var(--border); }
+  .dist-bar-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; padding-left: 8px; font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; transition: width 0.6s ease; color: #fff; }
+  .dist-bar-val { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); }
+
+  /* ── SPARKLINE-STYLE METRICS ── */
+  .metric-row { display: flex; align-items: baseline; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .metric-row:last-child { border-bottom: none; }
+  .metric-name { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); flex: 1; }
+  .metric-csv-val  { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--csv);  width: 80px; text-align: right; }
+  .metric-par-val  { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--par);  width: 80px; text-align: right; }
+  .metric-speedup  { font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 700; color: var(--accent); width: 55px; text-align: right; }
+
+  /* ── QUERY CODE BOX ── */
+  .code-box {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: #4a5060;
+    line-height: 1.8;
+  }
+</style>
 </head>
 <body>
+<div class="wrap">
 
-<h1>Parquet vs CSV — Benchmark Dashboard</h1>
-<p class="subtitle">CCBD SP26 · Variant 1 · Azure Blob Storage · 5M / 25M / 100M financial transactions · seed=42</p>
-
-<div class="kpi-grid">
-  <div class="kpi">
-    <div class="kpi-label">Storage reduction</div>
-    <div class="kpi-value green">−68%</div>
-    <div class="kpi-sub">Parquet vs CSV · all sizes</div>
-  </div>
-  <div class="kpi">
-    <div class="kpi-label">Max query speedup</div>
-    <div class="kpi-value purple">56×</div>
-    <div class="kpi-sub">Size L · 100M rows</div>
-  </div>
-  <div class="kpi">
-    <div class="kpi-label">Download advantage</div>
-    <div class="kpi-value blue">2.8×</div>
-    <div class="kpi-sub">MB/s · size S</div>
-  </div>
-  <div class="kpi">
-    <div class="kpi-label">Cost savings</div>
-    <div class="kpi-value green">−68%</div>
-    <div class="kpi-sub">Storage + egress · CHF/mo</div>
-  </div>
-</div>
-
-<p class="section-title">Criterion 1 — Storage size</p>
-<div class="charts-grid">
-  <div class="panel">
-    <h2>Absolute storage (GB)</h2>
-    <p>CSV stores raw text — Parquet uses columnar compression</p>
-    <div class="legend">
-      <div class="leg"><div class="leg-sq" style="background:#e74c3c"></div>CSV</div>
-      <div class="leg"><div class="leg-sq" style="background:#2ecc71"></div>Parquet</div>
+  <!-- ── HEADER ── -->
+  <div class="header">
+    <div>
+      <div class="header-eyebrow">CCBD SP26 · Variant 1 </div>
+      <h1>Parquet vs CSV<br>Benchmark Dashboard</h1>
+      <div class="header-sub">MinIO (Docker) · Azure Blob Storage · AWS S3 &nbsp;|&nbsp; S=5M · M=25M · L=100M rows</div>
     </div>
-    <div style="position:relative;height:220px"><canvas id="storageBar"></canvas></div>
-    <div class="insight">Parquet is <strong>3.2× smaller</strong> than CSV across all sizes. Low-cardinality columns (region, event_type, currency) compress with dictionary encoding — the word "Europe" is stored once, not 20M times.</div>
-  </div>
-  <div class="panel">
-    <h2>Compression ratio over scale</h2>
-    <p>Does the advantage change with dataset size?</p>
-    <div style="position:relative;height:260px"><canvas id="compressionLine"></canvas></div>
-    <div class="insight">Compression ratio stays stable at ~3.2× — Parquet's advantage is consistent regardless of dataset size.</div>
-  </div>
-</div>
-
-<p class="section-title">Criterion 2 — Transfer performance</p>
-<div class="charts-grid">
-  <div class="panel">
-    <h2>Upload throughput (MB/s)</h2>
-    <p>Higher = faster upload to Azure Blob Storage</p>
-    <div class="legend">
-      <div class="leg"><div class="leg-sq" style="background:#e74c3c"></div>CSV</div>
-      <div class="leg"><div class="leg-sq" style="background:#2ecc71"></div>Parquet</div>
+    <div class="header-meta">
+      <div><span class="badge badge-accent">seed=42</span></div>
+      <div style="margin-top:6px">Salsabil Mtiraoui</div>
+      <div>Erulan Ibraimov</div>
+      <div style="margin-top:4px;font-size:10px">May 2026</div>
     </div>
-    <div style="position:relative;height:220px"><canvas id="uploadBar"></canvas></div>
-    <div class="insight">Size S CSV upload anomaly (0.51 MB/s) is likely Azure cold-start throttling on first connection. Sizes M and L show stable throughput around 6–7 MB/s for both formats.</div>
   </div>
-  <div class="panel">
-    <h2>Download throughput (MB/s)</h2>
-    <p>Higher = faster retrieval from Azure</p>
-    <div class="legend">
-      <div class="leg"><div class="leg-sq" style="background:#e74c3c"></div>CSV</div>
-      <div class="leg"><div class="leg-sq" style="background:#2ecc71"></div>Parquet</div>
-    </div>
-    <div style="position:relative;height:220px"><canvas id="downloadBar"></canvas></div>
-    <div class="insight">Parquet downloads faster on size S (7.3 vs 2.6 MB/s) because Azure serves smaller objects more efficiently. Gap narrows on larger files.</div>
-  </div>
-</div>
 
-<p class="section-title">Criterion 3 — Query performance (PyArrow column pruning + predicate pushdown)</p>
-<div class="charts-grid">
-  <div class="panel">
-    <h2>Query time — log scale (seconds)</h2>
-    <p>Filter region=Europe, ts range, groupby event_type, agg count+mean</p>
-    <div class="legend">
-      <div class="leg"><div class="leg-sq" style="background:#e74c3c"></div>CSV (pandas, chunked)</div>
-      <div class="leg"><div class="leg-sq" style="background:#2ecc71"></div>Parquet (pyarrow.dataset)</div>
+  <!-- ── KPI CARDS ── -->
+  <div class="kpi-grid">
+    <div class="kpi" style="--kpi-accent:var(--par)">
+      <div class="kpi-label">Storage saved</div>
+      <div class="kpi-value">−73%</div>
+      <div class="kpi-sub">Parquet vs CSV · all sizes</div>
     </div>
-    <div style="position:relative;height:220px"><canvas id="queryLog"></canvas></div>
-    <div class="insight">Log scale reveals the true gap — CSV takes 456s for L, Parquet takes 8s. PyArrow reads only 2/7 columns and skips irrelevant row groups entirely.</div>
-  </div>
-  <div class="panel">
-    <h2>Speedup grows with scale</h2>
-    <p>Parquet advantage increases as dataset gets larger</p>
-    <div style="position:relative;height:260px"><canvas id="speedupLine"></canvas></div>
-    <div class="insight">Speedup grows: <strong>35× → 49× → 56×</strong>. As more data accumulates, predicate pushdown skips more row groups, making Parquet increasingly efficient at scale.</div>
-  </div>
-</div>
-
-<p class="section-title">Cost analysis — Azure Blob Storage (CHF/month)</p>
-<div class="charts-grid">
-  <div class="panel">
-    <h2>Total cost per dataset size</h2>
-    <p>Storage (0.020 CHF/GB) + Egress (0.090 CHF/GB)</p>
-    <div class="legend">
-      <div class="leg"><div class="leg-sq" style="background:#e74c3c"></div>CSV</div>
-      <div class="leg"><div class="leg-sq" style="background:#2ecc71"></div>Parquet</div>
+    <div class="kpi" style="--kpi-accent:var(--aws)">
+      <div class="kpi-label">Max query speedup</div>
+      <div class="kpi-value">703×</div>
+      <div class="kpi-sub">Azure · size L · 100M rows</div>
     </div>
-    <div style="position:relative;height:220px"><canvas id="costBar"></canvas></div>
-    <div class="insight">Egress dominates cost. For size L, CSV costs ~0.71 CHF/month vs Parquet's ~0.23 CHF — a saving of ~0.48 CHF per query cycle.</div>
+    <div class="kpi" style="--kpi-accent:var(--minio)">
+      <div class="kpi-label">MinIO upload (Parquet)</div>
+      <div class="kpi-value">452<span style="font-size:16px"> MB/s</span></div>
+      <div class="kpi-sub">Local disk · size M</div>
+    </div>
+    <div class="kpi" style="--kpi-accent:var(--azure)">
+      <div class="kpi-label">Azure cloud speedup</div>
+      <div class="kpi-value">16×</div>
+      <div class="kpi-sub">query · size S</div>
+    </div>
+    <div class="kpi" style="--kpi-accent:var(--accent)">
+      <div class="kpi-label">Query rows (size L)</div>
+      <div class="kpi-value">11.7M</div>
+      <div class="kpi-sub">~11.7% selectivity · Eurozone</div>
+    </div>
+    <div class="kpi" style="--kpi-accent:var(--gold)">
+      <div class="kpi-label">Cost savings (size L)</div>
+      <div class="kpi-value">−73%</div>
+      <div class="kpi-sub">storage + egress · CHF/mo</div>
+    </div>
+  </div>
+
+  <!-- ── SECTION 1: DATASET DISTRIBUTIONS ── -->
+  <div class="section-head">
+    <span class="section-num">01</span>
+    <h2>Dataset schema &amp; distributions</h2>
+  </div>
+  <div class="g2" style="margin-bottom:14px">
+    <div class="panel">
+      <h3>Region distribution</h3>
+      <p class="desc">Designed probabilities — Eurozone &amp; US dominate</p>
+      <div id="dist-region"></div>
+    </div>
+    <div class="panel">
+      <h3>Event type distribution</h3>
+      <p class="desc">Payment = 45% of all transactions</p>
+      <div id="dist-event"></div>
+    </div>
+  </div>
+  <div class="g3" style="margin-bottom:14px">
+    <div class="panel">
+      <h3>Transaction status by event</h3>
+      <p class="desc">Failure rates: transfer 5%, withdrawal 3%</p>
+      <div class="chart-wrap" style="height:200px"><canvas id="statusChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <h3>Value distribution (log-normal)</h3>
+      <p class="desc">Mean transaction amounts by event type</p>
+      <div class="chart-wrap" style="height:200px"><canvas id="valueChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <h3>Foreign currency rate</h3>
+      <p class="desc">~10% design target, ~7–9% effective per region</p>
+      <div id="dist-foreign"></div>
+    </div>
+  </div>
+
+  <!-- ── SECTION 2: STORAGE ── -->
+  <div class="section-head">
+    <span class="section-num">02</span>
+    <h2>Criterion 1 — Storage size</h2>
+  </div>
+  <div class="g2" style="margin-bottom:14px">
+    <div class="panel">
+      <h3>Absolute storage (MB)</h3>
+      <p class="desc">CSV raw text vs Parquet columnar + Snappy compression</p>
+      <div class="legend">
+        <div class="leg"><div class="leg-sq" style="background:var(--csv)"></div>CSV</div>
+        <div class="leg"><div class="leg-sq" style="background:var(--par)"></div>Parquet</div>
+      </div>
+      <div class="chart-wrap" style="height:220px"><canvas id="storageBar"></canvas></div>
+      <div class="insight">Parquet is <strong>3.75× smaller</strong> — driven by dictionary encoding on 4 low-cardinality columns (region 5 values, event_type 4, currency 5, status 3). The compression ratio stays stable at ~73% across all sizes.</div>
+    </div>
+    <div class="panel">
+      <h3>Compression ratio per size</h3>
+      <p class="desc">CSV size / Parquet size — higher = Parquet more efficient</p>
+      <div class="chart-wrap" style="height:280px"><canvas id="compressionChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ── SECTION 3: TRANSFER ── -->
+  <div class="section-head">
+    <span class="section-num">03</span>
+    <h2>Criterion 2 — Transfer performance</h2>
+  </div>
+  <div class="tabs" id="transfer-tabs">
+    <button class="tab active-all" onclick="setTransferBackend('all',this)" id="tab-all">All backends</button>
+    <button class="tab" onclick="setTransferBackend('minio',this)" id="tab-minio">MinIO</button>
+    <button class="tab" onclick="setTransferBackend('azure',this)" id="tab-azure">Azure</button>
+    <button class="tab" onclick="setTransferBackend('aws',this)" id="tab-aws">AWS S3</button>
+  </div>
+  <div class="g2" style="margin-bottom:14px">
+    <div class="panel">
+      <h3>Upload throughput (MB/s)</h3>
+      <p class="desc" id="upload-desc">All backends — higher is better</p>
+      <div class="chart-wrap" style="height:240px"><canvas id="uploadChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <h3>Download throughput (MB/s)</h3>
+      <p class="desc">Parquet = fewer bytes = faster transfer</p>
+      <div class="chart-wrap" style="height:240px"><canvas id="downloadChart"></canvas></div>
+    </div>
+  </div>
+  <div class="g2" style="margin-bottom:14px">
+    <div class="panel">
+      <h3>Total transfer time (upload + download, seconds)</h3>
+      <p class="desc">Cloud backends show large absolute time differences</p>
+      <div class="chart-wrap" style="height:220px"><canvas id="transferTimeChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <h3>Listing time (seconds) — 1 / 5 / 20 objects</h3>
+      <p class="desc">Grows with object count — preview of small-files problem</p>
+      <div class="chart-wrap" style="height:220px"><canvas id="listChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ── SECTION 4: QUERY ── -->
+  <div class="section-head">
+    <span class="section-num">04</span>
+    <h2>Criterion 3 — Analytics query performance</h2>
+  </div>
+  <div class="panel" style="margin-bottom:14px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      <h3>Query definition</h3>
+      <span class="badge badge-accent">PyArrow predicate pushdown + column pruning</span>
+    </div>
+    <div class="code-box">
+      <span style="color:var(--aws);font-weight:600">FILTER</span>  region = <span style="color:var(--par)">'Eurozone'</span>  AND  ts &gt;= <span style="color:var(--par)">'2026-04-10'</span>  AND  ts &lt; <span style="color:var(--par)">'2026-04-20'</span><br>
+      <span style="color:var(--aws);font-weight:600">GROUP BY</span>  event_type<br>
+      <span style="color:var(--aws);font-weight:600">SELECT</span>   COUNT(value),  MEAN(value)<br>
+      <span style="color:var(--muted)">→ Selectivity: ~11.7% of rows (35% Eurozone × 33% time window)</span>
+    </div>
+  </div>
+  <div class="g2" style="margin-bottom:14px">
+    <div class="panel">
+      <h3>Query time — log scale (seconds)</h3>
+      <p class="desc">Log scale needed — gap spans 3 orders of magnitude</p>
+      <div class="legend">
+        <div class="leg"><div class="leg-sq" style="background:var(--csv)"></div>CSV</div>
+        <div class="leg"><div class="leg-sq" style="background:var(--par)"></div>Parquet</div>
+      </div>
+      <div class="chart-wrap" style="height:260px"><canvas id="queryChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <h3>Speedup trend: does it scale?</h3>
+      <p class="desc">MinIO decreases (local disk), cloud backends increase with data size</p>
+      <div class="chart-wrap" style="height:300px"><canvas id="speedupLine"></canvas></div>
+      <div class="insight"><strong>Key insight:</strong> On cloud (Azure/AWS), speedup grows with size because network I/O dominates — Parquet's smaller footprint wins more at scale. MinIO (local disk) shows decreasing speedup because CSV reading is already fast without network.</div>
+    </div>
+  </div>
+
+  <!-- ── SECTION 5: HEATMAP ── -->
+  <div class="section-head">
+    <span class="section-num">05</span>
+    <h2>Multi-backend comparison — speedup heatmap</h2>
+  </div>
+  <div class="g2" style="margin-bottom:14px">
+    <div class="panel">
+      <h3>Query speedup (CSV time ÷ Parquet time)</h3>
+      <p class="desc">Green = Parquet faster — darker = larger advantage</p>
+      <div style="margin-top:1rem" id="heatmap-query"></div>
+      <div class="insight" style="margin-top:1rem"><strong>Azure size L: 703×</strong> — the largest speedup in the dataset. Azure's slower network amplifies Parquet's advantage dramatically for large files.</div>
+    </div>
+    <div class="panel">
+      <h3>Per-backend metrics summary</h3>
+      <p class="desc">Size S — direct comparison across all three backends</p>
+      <div style="margin-top:0.5rem">
+        <div style="display:flex;gap:6px;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);padding:4px 0;border-bottom:1.5px solid var(--border2)">
+          <span style="flex:1">Metric</span>
+          <span style="width:75px;text-align:right;color:var(--csv)">CSV</span>
+          <span style="width:75px;text-align:right;color:var(--par)">Parquet</span>
+          <span style="width:55px;text-align:right;color:var(--accent)">Ratio</span>
+        </div>
+        <div id="summary-rows-minio"></div>
+        <div id="summary-rows-azure" style="margin-top:8px"></div>
+        <div id="summary-rows-aws"   style="margin-top:8px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SECTION 6: COST ── -->
+  <div class="section-head">
+    <span class="section-num">06</span>
+    <h2>Cost estimation (project pricing model)</h2>
+  </div>
+  <div class="g2" style="margin-bottom:14px">
+    <div class="panel">
+      <h3>Total estimated cost (CHF/month)</h3>
+      <p class="desc">0.020 CHF/GB storage + 0.090 CHF/GB egress · 30 downloads/month</p>
+      <div class="legend">
+        <div class="leg"><div class="leg-sq" style="background:var(--csv)"></div>CSV</div>
+        <div class="leg"><div class="leg-sq" style="background:var(--par)"></div>Parquet</div>
+      </div>
+      <div class="chart-wrap" style="height:220px"><canvas id="costChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <h3>Cost breakdown — size L (CSV vs Parquet)</h3>
+      <p class="desc">Which component dominates?</p>
+      <div class="chart-wrap" style="height:260px"><canvas id="costDonut"></canvas></div>
+      <div class="insight">Egress accounts for <strong>~82% of total cost</strong> for both formats. Reducing file size by 73% directly reduces egress — the dominant cost driver.</div>
+    </div>
+  </div>
+
+  <!-- ── SECTION 7: FULL TABLE ── -->
+  <div class="section-head">
+    <span class="section-num">07</span>
+    <h2>Full results table</h2>
   </div>
   <div class="panel">
-    <h2>Cost breakdown — size L</h2>
-    <p>Which component dominates? (CSV vs Parquet)</p>
-    <div style="position:relative;height:260px"><canvas id="costDonut"></canvas></div>
-    <div class="insight">For both formats, egress (download) accounts for ~82% of total cost — storage itself is cheap. Reducing file size directly reduces egress cost.</div>
+    <div class="tbl-wrap">
+      <table id="results-table">
+        <thead>
+          <tr>
+            <th>Backend</th><th>Size</th><th>Format</th><th>Files</th>
+            <th>Size (MB)</th><th>Upload (MB/s)</th><th>Download (MB/s)</th>
+            <th>List (s)</th><th>Query (s)</th><th>Query rows</th><th>Speedup</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
   </div>
-</div>
 
-<p class="section-title">Full results</p>
-<div class="panel" style="margin-bottom:2rem;">
-  <table>
-    <thead>
-      <tr>
-        <th>Size</th><th>Format</th><th>Stored (GB)</th>
-        <th>Upload (MB/s)</th><th>Download (MB/s)</th>
-        <th>Query (s)</th><th>Cost/mo (CHF)</th><th>Result</th>
-      </tr>
-    </thead>
-    <tbody id="table-body"></tbody>
-  </table>
-</div>
+</div><!-- /wrap -->
 
 <script>
-const D = {
-  S:{r:'5M', csv:{gb:0.322,up:0.506,dl:2.568,q:24.00}, par:{gb:0.102,up:1.146,dl:7.263,q:0.68}},
-  M:{r:'25M',csv:{gb:1.610,up:6.916,dl:6.916,q:114.88},par:{gb:0.512,up:7.070,dl:7.520,q:2.33}},
-  L:{r:'100M',csv:{gb:6.439,up:5.254,dl:3.315,q:456.03},par:{gb:2.047,up:7.651,dl:4.973,q:8.11}}
+/* ════════════════════════════════════════════════════
+   DATA
+════════════════════════════════════════════════════ */
+const RAW = {
+  minio: {
+    S: { csv:{mb:298.82,  up:515.11,  dl:877.17,  list:0.031, q:2.953,    rows:584041,    obj:1},
+         par:{mb:78.92,   up:371.57,  dl:690.73,  list:0.025, q:0.149,    rows:584041,    obj:1} },
+    M: { csv:{mb:1494.12, up:668.33,  dl:919.25,  list:0.027, q:5.207,    rows:2916266,   obj:5},
+         par:{mb:394.61,  up:451.25,  dl:771.50,  list:0.032, q:0.374,    rows:2916266,   obj:5} },
+    L: { csv:{mb:5976.46, up:677.92,  dl:855.20,  list:0.031, q:12.362,   rows:11666670,  obj:20},
+         par:{mb:1578.44, up:403.35,  dl:761.28,  list:0.027, q:1.233,    rows:11666670,  obj:20} },
+  },
+  azure: {
+    S: { csv:{mb:298.82,  up:0.94,    dl:1.84,    list:0.066, q:254.588,  rows:584041,    obj:1},
+         par:{mb:78.92,   up:1.29,    dl:1.29,    list:0.062, q:15.678,   rows:584041,    obj:1} },
+    M: { csv:{mb:1494.12, up:1.46,    dl:1.21,    list:0.071, q:758.786,  rows:2916266,   obj:5},
+         par:{mb:394.61,  up:1.35,    dl:1.28,    list:0.086, q:59.742,   rows:2916266,   obj:5} },
+    L: { csv:{mb:5976.46, up:1.46,    dl:1.21,    list:0.090, q:1801.443, rows:11666670,  obj:20},
+         par:{mb:1578.44, up:1.35,    dl:1.28,    list:0.110, q:196.957,  rows:11666670,  obj:20} },
+  },
+  aws: {
+    S: { csv:{mb:298.82,  up:1.59,    dl:2.37,    list:0.584, q:288.697,  rows:584041,    obj:1},
+         par:{mb:78.92,   up:2.99,    dl:2.86,    list:0.409, q:46.045,   rows:584041,    obj:1} },
+    M: { csv:{mb:1494.12, up:2.28,    dl:3.01,    list:0.377, q:811.353,  rows:2916266,   obj:5},
+         par:{mb:394.61,  up:1.63,    dl:1.32,    list:0.432, q:177.007,  rows:2916266,   obj:5} },
+    L: { csv:{mb:5976.46, up:2.28,    dl:3.01,    list:0.450, q:1926.243, rows:11666670,  obj:20},
+         par:{mb:1578.44, up:1.63,    dl:1.32,    list:0.500, q:583.555,  rows:11666670,  obj:20} },
+  }
 };
-const SZ = ['S','M','L'];
-const LB = ['S (5M)','M (25M)','L (100M)'];
-const CSV_C = '#e74c3c';
-const PAR_C = '#2ecc71';
-const PUR_C = '#8e44ad';
-const BLU_C = '#185FA5';
-function cost(gb){ return +(gb*0.020 + gb*0.090).toFixed(4); }
 
-const defOpts = (log=false) => ({
+const BACKENDS = ['minio','azure','aws'];
+const SIZES    = ['S','M','L'];
+const SZ_ROWS  = {S:'5M',M:'25M',L:'100M'};
+const SZ_LABELS = ['S (5M)','M (25M)','L (100M)'];
+const BK_LABEL = {minio:'MinIO (Docker)',azure:'Azure Blob',aws:'AWS S3'};
+const BK_COLOR = {minio:'#185FA5',azure:'#c45e0a',aws:'#7c3aed'};
+
+const CSV_C = '#e0391a', PAR_C = '#1a8a50';
+const PRICE = {storage:0.020, egress:0.090};
+
+function cost(mb){ const gb=mb/1024; return +(gb*PRICE.storage + gb*30*PRICE.egress).toFixed(4); }
+function speedup(bk,sz){ return (RAW[bk][sz].csv.q / RAW[bk][sz].par.q).toFixed(1); }
+
+const chartDefaults = {
   responsive:true, maintainAspectRatio:false,
   plugins:{ legend:{ display:false } },
-  scales:{ y:{ type: log?'logarithmic':'linear', beginAtZero: !log } }
+  scales:{
+    x:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6b7080',font:{family:'DM Mono',size:10}}},
+    y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6b7080',font:{family:'DM Mono',size:10}}}
+  }
+};
+
+/* ════════════════════════════════════════════════════
+   DISTRIBUTION BARS (HTML)
+════════════════════════════════════════════════════ */
+function distBars(containerId, items){
+  const el = document.getElementById(containerId);
+  el.innerHTML = items.map(({label,pct,col})=>`
+    <div class="dist-bar-row">
+      <div class="dist-bar-label">${label}</div>
+      <div class="dist-bar-track">
+        <div class="dist-bar-fill" style="width:${pct}%;background:${col}">${pct>=8?pct+'%':''}</div>
+        ${pct<8?`<span class="dist-bar-val">${pct}%</span>`:''}
+      </div>
+    </div>`).join('');
+}
+
+distBars('dist-region',[
+  {label:'Eurozone',    pct:35, col:'#185FA5'},
+  {label:'US',          pct:35, col:'#7c3aed'},
+  {label:'UK',          pct:15, col:'#1a8a50'},
+  {label:'Canada',      pct:10, col:'#c45e0a'},
+  {label:'Switzerland', pct:5,  col:'#b08800'},
+]);
+
+distBars('dist-event',[
+  {label:'payment',    pct:45, col:'#e0391a'},
+  {label:'transfer',   pct:20, col:'#185FA5'},
+  {label:'deposit',    pct:18, col:'#1a8a50'},
+  {label:'withdrawal', pct:17, col:'#c45e0a'},
+]);
+
+distBars('dist-foreign',[
+  {label:'Switzerland', pct:8.9, col:'#b08800'},
+  {label:'UK',          pct:9.1, col:'#1a8a50'},
+  {label:'Canada',      pct:9.1, col:'#c45e0a'},
+  {label:'Eurozone',    pct:7.0, col:'#185FA5'},
+  {label:'US',          pct:5.9, col:'#7c3aed'},
+]);
+
+/* ════════════════════════════════════════════════════
+   CHART.JS CHARTS
+════════════════════════════════════════════════════ */
+
+// Status chart
+new Chart('statusChart',{type:'bar',data:{
+  labels:['payment','withdrawal','transfer','deposit'],
+  datasets:[
+    {label:'completed',data:[0.95,0.93,0.90,0.96],backgroundColor:'#1a8a50',borderRadius:3},
+    {label:'pending',  data:[0.02,0.04,0.05,0.03],backgroundColor:'#c45e0a',borderRadius:3},
+    {label:'failed',   data:[0.03,0.03,0.05,0.01],backgroundColor:'#e0391a',borderRadius:3},
+  ]
+},options:{...chartDefaults,responsive:true,maintainAspectRatio:false,
+  plugins:{legend:{display:true,labels:{color:'#6b7080',font:{family:'DM Mono',size:9},boxWidth:10}}},
+  scales:{
+    x:{stacked:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6b7080',font:{family:'DM Mono',size:9}}},
+    y:{stacked:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6b7080',font:{family:'DM Mono',size:9}},max:1}
+  }
+}});
+
+// Value chart (mean transaction amounts)
+new Chart('valueChart',{type:'bar',data:{
+  labels:['payment','withdrawal','transfer','deposit'],
+  datasets:[{
+    data:[Math.exp(3.25+0.95**2/2),Math.exp(4.6+0.55**2/2),Math.exp(5.3+1.25**2/2),Math.exp(5.55+1.05**2/2)].map(v=>+v.toFixed(1)),
+    backgroundColor:['#e0391a','#c45e0a','#185FA5','#1a8a50'],
+    borderRadius:5,
+  }]
+},options:{...chartDefaults,responsive:true,maintainAspectRatio:false,
+  plugins:{
+    legend:{display:false},
+    tooltip:{callbacks:{label:ctx=>`Mean ≈ ${ctx.parsed.y.toFixed(0)} CHF/USD`}}
+  },
+  scales:{
+    x:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6b7080',font:{family:'DM Mono',size:9}}},
+    y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6b7080',font:{family:'DM Mono',size:9}},title:{display:true,text:'Mean value (CHF)',color:'#6b7080',font:{size:10}}}
+  }
+}});
+
+// Storage bar
+new Chart('storageBar',{type:'bar',data:{
+  labels:SZ_LABELS,
+  datasets:[
+    {label:'CSV',    data:SIZES.map(s=>RAW.minio[s].csv.mb), backgroundColor:CSV_C,borderRadius:5},
+    {label:'Parquet',data:SIZES.map(s=>RAW.minio[s].par.mb), backgroundColor:PAR_C,borderRadius:5},
+  ]
+},options:{...chartDefaults,
+  scales:{
+    x:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6b7080',font:{family:'DM Mono',size:10}}},
+    y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6b7080',font:{family:'DM Mono',size:10}},title:{display:true,text:'MB',color:'#6b7080'}}
+  }
+}});
+
+// Compression ratio
+new Chart('compressionChart',{type:'bar',data:{
+  labels:SZ_LABELS,
+  datasets:[{
+    data:SIZES.map(s=>+(RAW.minio[s].csv.mb/RAW.minio[s].par.mb).toFixed(2)),
+    backgroundColor:['#185FA5','#7c3aed','#b08800'],
+    borderRadius:6,
+  }]
+},options:{...chartDefaults,
+  plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.parsed.y}× smaller`}}},
+  scales:{
+    x:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6b7080',font:{family:'DM Mono',size:10}}},
+    y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6b7080',font:{family:'DM Mono',size:10},callback:v=>v+'×'},min:0,title:{display:true,text:'Ratio (CSV÷Parquet)',color:'#6b7080'}}
+  }
+}});
+
+/* ── Transfer charts (dynamic) ── */
+let uploadChart, downloadChart, transferTimeChart, listChart;
+let currentBackend = 'all';
+
+function makeDatasets(metric, bkFilter){
+  if(bkFilter !== 'all'){
+    return [
+      {label:'CSV',    data:SIZES.map(s=>RAW[bkFilter][s].csv[metric]),backgroundColor:CSV_C,borderRadius:4},
+      {label:'Parquet',data:SIZES.map(s=>RAW[bkFilter][s].par[metric]),backgroundColor:PAR_C,borderRadius:4},
+    ];
+  }
+  const ds = [];
+  BACKENDS.forEach(bk=>{
+    ds.push({label:`${bk}/csv`,    data:SIZES.map(s=>RAW[bk][s].csv[metric]),backgroundColor:BK_COLOR[bk],borderRadius:4,opacity:0.5});
+    ds.push({label:`${bk}/parquet`,data:SIZES.map(s=>RAW[bk][s].par[metric]),backgroundColor:BK_COLOR[bk],borderRadius:4,borderWidth:2,borderColor:'rgba(0,0,0,0.15)'});
+  });
+  return ds;
+}
+
+function buildTransferCharts(bk){
+  if(uploadChart) uploadChart.destroy();
+  if(downloadChart) downloadChart.destroy();
+  if(transferTimeChart) transferTimeChart.destroy();
+  if(listChart) listChart.destroy();
+
+  const opts = (log=false)=>({...chartDefaults,
+    scales:{
+      x:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6b7080',font:{family:'DM Mono',size:10}}},
+      y:{type:log?'logarithmic':'linear',grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6b7080',font:{family:'DM Mono',size:10}}}
+    }
+  });
+
+  uploadChart = new Chart('uploadChart',{type:'bar',data:{labels:SZ_LABELS,datasets:makeDatasets('up',bk)},options:opts()});
+  downloadChart = new Chart('downloadChart',{type:'bar',data:{labels:SZ_LABELS,datasets:makeDatasets('dl',bk)},options:opts()});
+
+  if(bk!=='all'){
+    const csvT = SIZES.map(s=>{
+      const csv=RAW[bk][s].csv; return +(csv.mb/csv.up + csv.mb/csv.dl).toFixed(1);
+    });
+    const parT = SIZES.map(s=>{
+      const par=RAW[bk][s].par; return +(par.mb/par.up + par.mb/par.dl).toFixed(1);
+    });
+    transferTimeChart = new Chart('transferTimeChart',{type:'bar',data:{labels:SZ_LABELS,datasets:[
+      {label:'CSV',    data:csvT,backgroundColor:CSV_C,borderRadius:4},
+      {label:'Parquet',data:parT,backgroundColor:PAR_C,borderRadius:4},
+    ]},options:opts()});
+  } else {
+    const ds=[];
+    BACKENDS.forEach(bkk=>{
+      const csvT=SIZES.map(s=>{const c=RAW[bkk][s].csv;return+(c.mb/c.up+c.mb/c.dl).toFixed(1);});
+      const parT=SIZES.map(s=>{const p=RAW[bkk][s].par;return+(p.mb/p.up+p.mb/p.dl).toFixed(1);});
+      ds.push({label:`${bkk}/csv`,    data:csvT,backgroundColor:BK_COLOR[bkk],borderRadius:4,opacity:0.5});
+      ds.push({label:`${bkk}/parquet`,data:parT,backgroundColor:BK_COLOR[bkk],borderRadius:4,borderWidth:2,borderColor:'rgba(0,0,0,0.15)'});
+    });
+    transferTimeChart = new Chart('transferTimeChart',{type:'bar',data:{labels:SZ_LABELS,datasets:ds},options:opts()});
+  }
+
+  listChart = new Chart('listChart',{type:'bar',data:{labels:SZ_LABELS,datasets:makeDatasets('list',bk)},options:opts()});
+}
+
+function setTransferBackend(bk, btn){
+  currentBackend = bk;
+  document.querySelectorAll('.tabs .tab').forEach(t=>{ t.className='tab'; });
+  btn.className = `tab active-${bk}`;
+  buildTransferCharts(bk);
+  document.getElementById('upload-desc').textContent =
+    bk==='all' ? 'All backends — higher is better' :
+    `${BK_LABEL[bk]} — higher is better`;
+}
+
+buildTransferCharts('all');
+
+/* ── Query chart ── */
+const queryDatasets = [];
+BACKENDS.forEach(bk=>{
+  queryDatasets.push({label:`${bk}/csv`,    data:SIZES.map(s=>RAW[bk][s].csv.q),backgroundColor:BK_COLOR[bk],borderRadius:4,opacity:0.5});
+  queryDatasets.push({label:`${bk}/parquet`,data:SIZES.map(s=>RAW[bk][s].par.q),backgroundColor:BK_COLOR[bk],borderRadius:4,borderWidth:2,borderColor:'rgba(0,0,0,0.2)'});
 });
+new Chart('queryChart',{type:'bar',data:{labels:SZ_LABELS,datasets:queryDatasets},options:{
+  ...chartDefaults,
+  scales:{
+    x:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6b7080',font:{family:'DM Mono',size:10}}},
+    y:{type:'logarithmic',grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6b7080',font:{family:'DM Mono',size:10}},title:{display:true,text:'seconds (log)',color:'#6b7080'}}
+  }
+}});
 
-new Chart('storageBar',{type:'bar',data:{labels:LB,datasets:[
-  {label:'CSV',data:SZ.map(s=>D[s].csv.gb),backgroundColor:CSV_C,borderRadius:6},
-  {label:'Parquet',data:SZ.map(s=>D[s].par.gb),backgroundColor:PAR_C,borderRadius:6}
-]},options:{...defOpts(),plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,title:{display:true,text:'GB'}}}}});
+// Speedup line
+new Chart('speedupLine',{type:'line',data:{
+  labels:SZ_LABELS,
+  datasets:BACKENDS.map(bk=>({
+    label:BK_LABEL[bk],
+    data:SIZES.map(s=>+(RAW[bk][s].csv.q/RAW[bk][s].par.q).toFixed(1)),
+    borderColor:BK_COLOR[bk],
+    backgroundColor:BK_COLOR[bk]+'22',
+    pointBackgroundColor:BK_COLOR[bk],
+    pointRadius:7, tension:0.3, fill:true, borderWidth:2.5,
+  }))
+},options:{
+  responsive:true,maintainAspectRatio:false,
+  plugins:{legend:{display:true,labels:{color:'#6b7080',font:{family:'DM Mono',size:10},boxWidth:10}}},
+  scales:{
+    x:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6b7080',font:{family:'DM Mono',size:10}}},
+    y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6b7080',font:{family:'DM Mono',size:10},callback:v=>v+'×'},
+       title:{display:true,text:'Speedup (CSV÷Parquet)',color:'#6b7080'}}
+  }
+}});
 
-new Chart('compressionLine',{type:'line',data:{labels:LB,datasets:[{
-  label:'Compression ratio (CSV/Parquet)',
-  data:SZ.map(s=>+(D[s].csv.gb/D[s].par.gb).toFixed(2)),
-  borderColor:PUR_C, backgroundColor:PUR_C+'22',
-  pointBackgroundColor:PUR_C, pointRadius:6, tension:0.3, fill:true
-}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:false,min:2,max:5,title:{display:true,text:'× times smaller'}}}}});
+/* ── Cost charts ── */
+const csvCosts = SIZES.map(s=>cost(RAW.minio[s].csv.mb));
+const parCosts = SIZES.map(s=>cost(RAW.minio[s].par.mb));
+new Chart('costChart',{type:'bar',data:{labels:SZ_LABELS,datasets:[
+  {label:'CSV',    data:csvCosts,backgroundColor:CSV_C,borderRadius:5},
+  {label:'Parquet',data:parCosts,backgroundColor:PAR_C,borderRadius:5},
+]},options:{...chartDefaults,
+  scales:{
+    x:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6b7080',font:{family:'DM Mono',size:10}}},
+    y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#6b7080',font:{family:'DM Mono',size:10}},title:{display:true,text:'CHF/month',color:'#6b7080'}}
+  }
+}});
 
-new Chart('uploadBar',{type:'bar',data:{labels:LB,datasets:[
-  {label:'CSV',data:SZ.map(s=>D[s].csv.up),backgroundColor:CSV_C,borderRadius:6},
-  {label:'Parquet',data:SZ.map(s=>D[s].par.up),backgroundColor:PAR_C,borderRadius:6}
-]},options:{...defOpts(),scales:{y:{beginAtZero:true,title:{display:true,text:'MB/s'}}}}});
-
-new Chart('downloadBar',{type:'bar',data:{labels:LB,datasets:[
-  {label:'CSV',data:SZ.map(s=>D[s].csv.dl),backgroundColor:CSV_C,borderRadius:6},
-  {label:'Parquet',data:SZ.map(s=>D[s].par.dl),backgroundColor:PAR_C,borderRadius:6}
-]},options:{...defOpts(),scales:{y:{beginAtZero:true,title:{display:true,text:'MB/s'}}}}});
-
-new Chart('queryLog',{type:'bar',data:{labels:LB,datasets:[
-  {label:'CSV',data:SZ.map(s=>D[s].csv.q),backgroundColor:CSV_C,borderRadius:6},
-  {label:'Parquet',data:SZ.map(s=>D[s].par.q),backgroundColor:PAR_C,borderRadius:6}
-]},options:{...defOpts(true),scales:{y:{type:'logarithmic',title:{display:true,text:'seconds (log scale)'}}}}});
-
-new Chart('speedupLine',{type:'line',data:{labels:LB,datasets:[{
-  label:'Speedup (×)',
-  data:SZ.map(s=>+(D[s].csv.q/D[s].par.q).toFixed(1)),
-  borderColor:PUR_C, backgroundColor:PUR_C+'22',
-  pointBackgroundColor:PUR_C, pointRadius:8, tension:0.3, fill:true,
-  pointStyle:'circle'
-}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
-  tooltip:{callbacks:{label:ctx=>`${ctx.parsed.y}× faster than CSV`}}},
-  scales:{y:{beginAtZero:true,title:{display:true,text:'Speedup factor (×)'},
-  ticks:{callback:v=>v+'×'}}}}});
-
-new Chart('costBar',{type:'bar',data:{labels:LB,datasets:[
-  {label:'CSV',data:SZ.map(s=>cost(D[s].csv.gb)),backgroundColor:CSV_C,borderRadius:6},
-  {label:'Parquet',data:SZ.map(s=>cost(D[s].par.gb)),backgroundColor:PAR_C,borderRadius:6}
-]},options:{...defOpts(),scales:{y:{beginAtZero:true,title:{display:true,text:'CHF/month'}}}}});
-
-const csvStorL = +(D.L.csv.gb*0.020).toFixed(4);
-const csvEgrL  = +(D.L.csv.gb*0.090).toFixed(4);
-const parStorL = +(D.L.par.gb*0.020).toFixed(4);
-const parEgrL  = +(D.L.par.gb*0.090).toFixed(4);
+const csvL=RAW.minio.L.csv.mb/1024, parL=RAW.minio.L.par.mb/1024;
 new Chart('costDonut',{type:'doughnut',data:{
   labels:['CSV Storage','CSV Egress','Parquet Storage','Parquet Egress'],
-  datasets:[{data:[csvStorL,csvEgrL,parStorL,parEgrL],
-    backgroundColor:['#f1948a','#e74c3c','#82e0aa','#2ecc71'],
-    borderWidth:2, borderColor:'white'}]
-},options:{responsive:true,maintainAspectRatio:false,
-  plugins:{legend:{position:'bottom',labels:{font:{size:11},padding:10}}},
-  cutout:'55%'}});
+  datasets:[{
+    data:[+(csvL*0.02).toFixed(3), +(csvL*30*0.09).toFixed(3), +(parL*0.02).toFixed(3), +(parL*30*0.09).toFixed(3)],
+    backgroundColor:['#fca5a5','#e0391a','#86efac','#1a8a50'],
+    borderWidth:2, borderColor:['#ffffff','#ffffff','#ffffff','#ffffff']
+  }]
+},options:{responsive:true,maintainAspectRatio:false,cutout:'55%',
+  plugins:{legend:{position:'bottom',labels:{color:'#6b7080',font:{family:'DM Mono',size:10},padding:8,boxWidth:10}}}}
+});
 
+/* ════════════════════════════════════════════════════
+   HEATMAP (HTML)
+════════════════════════════════════════════════════ */
+function buildHeatmap(containerId, getValue, format){
+  const vals = BACKENDS.flatMap(bk=>SIZES.map(sz=>getValue(bk,sz)));
+  const maxV = Math.max(...vals), minV = Math.min(...vals);
+  const el = document.getElementById(containerId);
+  let html = `<div class="hm-header">${SZ_LABELS.map(l=>`<span>${l}</span>`).join('')}</div>`;
+  BACKENDS.forEach(bk=>{
+    html += `<div class="hm-row"><div class="hm-label">${BK_LABEL[bk]}</div>`;
+    SIZES.forEach(sz=>{
+      const v = getValue(bk,sz);
+      const t = (v-minV)/(maxV-minV);
+      // Light green scale: low = light, high = dark green
+      const r = Math.round(240 - t*180);
+      const g = Math.round(250 - t*100);
+      const b = Math.round(240 - t*180);
+      const bg = `rgb(${r},${g},${b})`;
+      const textColor = t > 0.45 ? '#0a3d1f' : '#1a8a50';
+      html += `<div class="hm-cell" style="background:${bg};color:${textColor};border:1px solid rgba(0,0,0,0.06)" title="${BK_LABEL[bk]} ${sz}: ${format(v)}">${format(v)}</div>`;
+    });
+    html += '</div>';
+  });
+  el.innerHTML = html;
+}
+
+buildHeatmap('heatmap-query',
+  (bk,sz)=>+(RAW[bk][sz].csv.q/RAW[bk][sz].par.q).toFixed(0),
+  v=>v+'×'
+);
+
+/* ════════════════════════════════════════════════════
+   SUMMARY METRIC ROWS
+════════════════════════════════════════════════════ */
+function buildSummaryRows(containerId, bk){
+  const d = RAW[bk].S;
+  const metrics = [
+    {name:'Size (MB)',    csv:d.csv.mb.toFixed(1),  par:d.par.mb.toFixed(1),  ratio:(d.csv.mb/d.par.mb).toFixed(1)+'×'},
+    {name:'Upload MB/s', csv:d.csv.up.toFixed(1),  par:d.par.up.toFixed(1),  ratio:(d.par.up/d.csv.up).toFixed(1)+'×'},
+    {name:'Download MB/s',csv:d.csv.dl.toFixed(1), par:d.par.dl.toFixed(1),  ratio:(d.par.dl/d.csv.dl).toFixed(1)+'×'},
+    {name:'Query (s)',   csv:d.csv.q.toFixed(2),   par:d.par.q.toFixed(3),   ratio:(d.csv.q/d.par.q).toFixed(0)+'×'},
+    {name:'List (s)',    csv:d.csv.list.toFixed(3), par:d.par.list.toFixed(3),ratio:'-'},
+  ];
+  const el = document.getElementById(containerId);
+  el.innerHTML = `
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:${BK_COLOR[bk]};padding:4px 0;margin-top:2px;text-transform:uppercase;letter-spacing:.08em">${BK_LABEL[bk]}</div>
+    ${metrics.map(m=>`
+      <div class="metric-row">
+        <span class="metric-name">${m.name}</span>
+        <span class="metric-csv-val">${m.csv}</span>
+        <span class="metric-par-val">${m.par}</span>
+        <span class="metric-speedup">${m.ratio}</span>
+      </div>`).join('')}`;
+}
+buildSummaryRows('summary-rows-minio','minio');
+buildSummaryRows('summary-rows-azure','azure');
+buildSummaryRows('summary-rows-aws','aws');
+
+/* ════════════════════════════════════════════════════
+   RESULTS TABLE
+════════════════════════════════════════════════════ */
 const tbody = document.getElementById('table-body');
-SZ.forEach(s=>{
-  ['csv','par'].forEach(fmt=>{
-    const d = D[s][fmt];
-    const isPar = fmt==='par';
-    const speedup = isPar
-      ? `<span class="badge win-badge">${(D[s].csv.q/D[s].par.q).toFixed(0)}× faster</span>`
-      : `<span class="badge lose-badge">${(D[s].csv.q/D[s].par.q).toFixed(0)}× slower</span>`;
-    const tr = document.createElement('tr');
-    if(isPar) tr.className = 'par-row';
-    tr.innerHTML = `
-      <td><strong>${s}</strong> (${D[s].r} rows)</td>
-      <td><span class="badge ${isPar?'par-badge':'csv-badge'}">${isPar?'Parquet':'CSV'}</span></td>
-      <td>${d.gb.toFixed(3)}</td>
-      <td>${d.up.toFixed(2)}</td>
-      <td>${d.dl.toFixed(2)}</td>
-      <td>${d.q.toFixed(2)}</td>
-      <td>${cost(d.gb)}</td>
-      <td>${speedup}</td>
-    `;
-    tbody.appendChild(tr);
+BACKENDS.forEach(bk=>{
+  SIZES.forEach(sz=>{
+    ['csv','parquet'].forEach(fmt=>{
+      const d = RAW[bk][sz][fmt==='csv'?'csv':'par'];
+      const sp = fmt==='parquet' ? (RAW[bk][sz].csv.q/d.q).toFixed(0)+'×' : '—';
+      const isPar = fmt==='parquet';
+      const tr = document.createElement('tr');
+      if(isPar) tr.className='par-row';
+      tr.innerHTML=`
+        <td><span class="chip chip-${bk}">${BK_LABEL[bk]}</span></td>
+        <td><span style="font-family:'DM Mono',monospace;font-size:11px">${sz} (${SZ_ROWS[sz]})</span></td>
+        <td><span class="chip chip-${fmt}">${fmt}</span></td>
+        <td style="font-family:'DM Mono',monospace;font-size:11px;color:#6b7080">${d.obj}</td>
+        <td style="font-family:'DM Mono',monospace;font-size:11px">${d.mb.toFixed(1)}</td>
+        <td style="font-family:'DM Mono',monospace;font-size:11px;color:${isPar?'var(--par)':'var(--muted)'}">${d.up.toFixed(2)}</td>
+        <td style="font-family:'DM Mono',monospace;font-size:11px;color:${isPar?'var(--par)':'var(--muted)'}">${d.dl.toFixed(2)}</td>
+        <td style="font-family:'DM Mono',monospace;font-size:11px;color:#6b7080">${d.list.toFixed(3)}</td>
+        <td style="font-family:'DM Mono',monospace;font-size:11px;color:${isPar?'var(--par)':'var(--csv)'}">${d.q.toFixed(isPar?3:2)}</td>
+        <td style="font-family:'DM Mono',monospace;font-size:11px;color:#6b7080">${d.rows.toLocaleString()}</td>
+        <td style="font-family:'Inter',sans-serif;font-weight:700;color:${isPar?'var(--accent)':'var(--muted)'};font-size:13px">${sp}</td>
+      `;
+      tbody.appendChild(tr);
+    });
   });
 });
 </script>
