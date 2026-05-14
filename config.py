@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 from azure.storage.blob import BlobServiceClient
 
+# Load environment variables from .env file (credentials are never hardcoded)
 load_dotenv()
 
 
@@ -19,6 +20,7 @@ def get_s3_client(storage):
     import boto3
 
     if storage == "minio":
+    # MinIO runs locally via Docker endpoint_url points to localhost:9000
         return boto3.client(
             "s3",
             endpoint_url=os.getenv("MINIO_ENDPOINT"),
@@ -28,6 +30,7 @@ def get_s3_client(storage):
         )
 
     if storage == "aws":
+    # AWS S3 uses the default boto3 endpoint (no endpoint_url needed)
         return boto3.client(
             "s3",
             aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
@@ -37,7 +40,8 @@ def get_s3_client(storage):
 
     raise ValueError("S3 client only supports minio and aws")
 
-
+# Singleton pattern: reuse the same Azure client across calls to avoid
+# re-authenticating on every upload/download operation
 _azure_client = None
 
 def get_azure_container_client():

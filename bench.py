@@ -18,11 +18,17 @@ from download import download_dataset, list_remote
 from config import get_bucket_name
 
 
+# Result schema: every benchmark row has these fields
 FIELDS = [
-    "bench_ts", "storage", "size", "file_type", "operation",
-    "objects", "size_mb",
+    "bench_ts",     # ISO timestamp of when the benchmark ran (UTC)
+    "storage",      # Backend: minio / azure / aws
+    "size",         # Dataset size label: S / M / L
+    "file_type",    # Format: csv or parquet
+    "operation",    # Which steps ran (e.g. generate+upload+download+list+query)
+    "objects",      # Number of files in the prefix
+    "size_mb",      # Total size in MB
     "generate_seconds", "generate_mbps",
-    "upload_seconds", "upload_mbps",
+    "upload_seconds",   "upload_mbps",
     "download_seconds", "download_mbps",
     "list_seconds",
     "query_filter_region", "query_start_ts", "query_end_ts", "query_grouped_by",
@@ -33,7 +39,7 @@ FILE_TYPES = ["csv", "parquet"]
 OPERATIONS = ["generate", "upload", "download", "list", "query"]
 
 
-# ---------- paths ----------
+#  paths 
  
 def local_dir(size, file_type):
     if file_type == "csv":
@@ -94,6 +100,18 @@ def write_results(rows, out_file):
 # ---------- endpoint filesystem for query ----------
  
 def endpoint_dataset_path(storage, size, file_type):
+    """
+    Build a (pyarrow.filesystem, path) pair for direct remote querying.
+
+    This is the key design choice: instead of downloading files and querying
+    locally, we query directly on the remote storage using PyArrow's
+    native filesystem abstraction (pafs.S3FileSystem / pafs.AzureFileSystem).
+
+    Benefits:
+    - No temporary local files needed
+    - PyArrow handles chunked streaming internally
+    - Predicate pushdown and column pruning work on the remote data
+    """
     bucket_or_container = get_bucket_name(storage)
     prefix = remote_prefix(size, file_type)
  
@@ -125,14 +143,19 @@ def endpoint_dataset_path(storage, size, file_type):
  
  
 def csv_format():
+    """
+    Define an explicit schema for reading CSV files with PyArrow.
+    Without this, PyArrow would infer types from the data, which is
+    slower and may produce incorrect types (e.g. timestamps as strings).
+    """
     schema = pa.schema([
-        ("ts", pa.timestamp("s")),
-        ("user_id", pa.int64()),
-        ("region", pa.string()),
+        ("ts",         pa.timestamp("s")),   # Parse ISO strings as timestamps
+        ("user_id",    pa.int64()),
+        ("region",     pa.string()),
         ("event_type", pa.string()),
-        ("value", pa.float64()),
-        ("currency", pa.string()),
-        ("status", pa.string()),
+        ("value",      pa.float64()),
+        ("currency",   pa.string()),
+        ("status",     pa.string()),
     ])
     return ds.CsvFileFormat(
         convert_options=pacsv.ConvertOptions(column_types=schema)
@@ -221,6 +244,19 @@ def bench_query(
     start_ts="2026-04-10",
     end_ts="2026-04-20",
 ):
+    """
+    Run the fixed analytics query directly on remote storage.
+
+    Query: filter region + time range, then count + mean(value) by event_type.
+
+    For Parquet: PyArrow uses:
+    - Column pruning: only reads 'event_type' and 'value' columns (2 of 7)
+    - Predicate pushdown: skips row groups where region/ts stats don't match
+    → Result: query reads only a fraction of the actual data
+
+    For CSV: PyArrow must read every column and every row before filtering
+    → Result: much slower, especially at large scale
+    """
     filesystem, path = endpoint_dataset_path(storage, size, file_type)
     fmt = "parquet" if file_type == "parquet" else csv_format()
     dataset = ds.dataset(path, filesystem=filesystem, format=fmt)
@@ -232,6 +268,7 @@ def bench_query(
     )
  
     start = time.time()
+    # columns= triggers column pruning — only 2/7 columns are read from disk
     table = dataset.to_table(columns=["event_type", "value"], filter=filt)
     grouped = table.group_by("event_type").aggregate([
         ("value", "count"),
