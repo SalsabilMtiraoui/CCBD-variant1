@@ -223,6 +223,10 @@ def bench_download(storage, size, file_type, clean=False, quiet=False):
  
 def bench_list(storage, size, file_type):
     prefix = remote_prefix(size, file_type)
+    
+    # Warm up the connection — not timed
+    list_remote(storage, prefix)
+    
     start = time.time()
     objects = list_remote(storage, prefix)
     seconds = time.time() - start
