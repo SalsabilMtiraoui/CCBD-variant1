@@ -85,7 +85,7 @@ CCBD-variant1/
 │
 # ------- ANALYSIS
 ├── analysis.ipynb          # plots + interpretation of results.csv
-├── dashboard.html          # optional visual dashboard
+├── dashboard.html          # visual dashboard
 │
 # ------- DATA (gitignored)
 ├── data/
@@ -97,10 +97,10 @@ CCBD-variant1/
 │   │   ├── data_S/parquet/ # S: 1 file
 │   │   ├── data_M/parquet/ # M: 5 files
 │   │   └── data_L/parquet/ # L: 20 files
-│   └── tmp/                # download benchmark folder, overwritten each run to save space
-│       ├── data_S/
-│       ├── data_M/
-│       └── data_L/
+│   └── tmp/                
+│       ├── data_S/csv | parquet  # folder for download benchmark, overwritten each run to save space
+│       ├── data_M/csv | parquet
+│       └── data_L/csv | parquet
 │
 # ------- RESULTS
 └── results/
