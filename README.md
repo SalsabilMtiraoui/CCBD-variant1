@@ -105,6 +105,7 @@ CCBD-variant1/
 # ------- RESULTS
 └── results/
     └── results.csv         # benchmark outputs (upload/download throughput, query times)
+    └── all the plots    
 ```
 
 ---
