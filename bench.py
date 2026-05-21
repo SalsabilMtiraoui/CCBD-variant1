@@ -272,7 +272,6 @@ def bench_query(
     )
  
     start = time.time()
-    # columns= triggers column pruning — only 2/7 columns are read from disk
     table = dataset.to_table(columns=["event_type", "value"], filter=filt)
     grouped = table.group_by("event_type").aggregate([
         ("value", "count"),
@@ -304,6 +303,7 @@ def run_benchmark(
     clean=False,
     out_file="results/results.csv",
     quiet=False,
+    region="Eurozone",
 ):
     operations = OPERATIONS if "all" in operations else list(operations)
     size = size.upper()
@@ -329,7 +329,7 @@ def run_benchmark(
         row.update(bench_list(storage, size, file_type))
  
     if "query" in operations:
-        row.update(bench_query(storage, size, file_type))
+        row.update(bench_query(storage, size, file_type, region = region))
  
     write_results([row], out_file)
  
@@ -345,6 +345,7 @@ def main():
     parser.add_argument("--size", default="S")
     parser.add_argument("--file-type", default="both", choices=["both"] + FILE_TYPES)
     parser.add_argument("--operation", nargs="+", default=["all"], choices=["all"] + OPERATIONS)
+    parser.add_argument("--region", default="Eurozone", choices=["Eurozone", "US", "UK", "Canada", "Switzerland"])
     parser.add_argument("--clean", action="store_true")
     parser.add_argument("--out", default="results/results.csv")
     parser.add_argument("--quiet", action="store_true")
@@ -358,6 +359,7 @@ def main():
             size=args.size.upper(),
             file_type=file_type,
             operations=args.operation,
+            region=args.region,
             clean=args.clean,
             out_file=args.out,
             quiet=args.quiet,
