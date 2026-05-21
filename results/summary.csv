@@ -1,4 +1,0 @@
-Size,CSV Size (GB),Parquet Size (GB),Size Reduction,CSV Upload (MB/s),Parquet Upload (MB/s),CSV Download (MB/s),Parquet Download (MB/s),CSV Query (s),Parquet Query (s),Query Speedup
-S (5M),0.322,0.102,68.3%,0.506,1.146,2.568,7.263,24.0011,0.6791,35.3x
-M (25M),1.61,0.512,68.2%,6.916,7.07,6.916,7.52,114.8762,2.3327,49.2x
-L (100M),6.439,2.047,68.2%,5.254,7.651,3.315,4.973,456.0256,8.1094,56.2x
