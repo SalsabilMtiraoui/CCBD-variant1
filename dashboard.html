@@ -330,18 +330,18 @@
     </div>
     <div class="kpi" style="--kpi-accent:var(--aws)">
       <div class="kpi-label">Max query speedup</div>
-      <div class="kpi-value">703×</div>
-      <div class="kpi-sub">Azure · size L · 100M rows</div>
+      <div class="kpi-value">20×</div>
+      <div class="kpi-sub">MinIO · size S · Eurozone (avg runs)</div>
     </div>
     <div class="kpi" style="--kpi-accent:var(--minio)">
-      <div class="kpi-label">MinIO upload (Parquet)</div>
-      <div class="kpi-value">452<span style="font-size:16px"> MB/s</span></div>
-      <div class="kpi-sub">Local disk · size M</div>
+      <div class="kpi-label">MinIO upload (CSV)</div>
+      <div class="kpi-value">474<span style="font-size:16px"> MB/s</span></div>
+      <div class="kpi-sub">Local disk · size S · avg runs</div>
     </div>
     <div class="kpi" style="--kpi-accent:var(--azure)">
       <div class="kpi-label">Azure cloud speedup</div>
       <div class="kpi-value">16×</div>
-      <div class="kpi-sub">query · size S</div>
+      <div class="kpi-sub">query · size L · Eurozone</div>
     </div>
     <div class="kpi" style="--kpi-accent:var(--accent)">
       <div class="kpi-label">Query rows (size L)</div>
@@ -443,8 +443,8 @@
       <div class="chart-wrap" style="height:220px"><canvas id="transferTimeChart"></canvas></div>
     </div>
     <div class="panel">
-      <h3>Listing time (seconds) — 1 / 5 / 20 objects</h3>
-      <p class="desc">Grows with object count — preview of small-files problem</p>
+      <h3>Listing time (seconds) — avg of 3 runs per config</h3>
+      <p class="desc">Averaged from repeated list-only measurements; AWS ~10× slower than Azure/MinIO</p>
       <div class="chart-wrap" style="height:220px"><canvas id="listChart"></canvas></div>
     </div>
   </div>
@@ -460,10 +460,10 @@
       <span class="badge badge-accent">PyArrow predicate pushdown + column pruning</span>
     </div>
     <div class="code-box">
-      <span style="color:var(--aws);font-weight:600">FILTER</span>  region = <span style="color:var(--par)">'Eurozone'</span>  AND  ts &gt;= <span style="color:var(--par)">'2026-04-10'</span>  AND  ts &lt; <span style="color:var(--par)">'2026-04-20'</span><br>
+      <span style="color:var(--aws);font-weight:600">FILTER</span>  region = <span style="color:var(--par)">'Eurozone'</span> <span style="color:var(--muted)">(or 'Switzerland')</span>  AND  ts &gt;= <span style="color:var(--par)">'2026-04-10'</span>  AND  ts &lt; <span style="color:var(--par)">'2026-04-20'</span><br>
       <span style="color:var(--aws);font-weight:600">GROUP BY</span>  event_type<br>
       <span style="color:var(--aws);font-weight:600">SELECT</span>   COUNT(value),  MEAN(value)<br>
-      <span style="color:var(--muted)">→ Selectivity: ~11.7% of rows (35% Eurozone × 33% time window)</span>
+      <span style="color:var(--muted)">→ Selectivity: ~11.7% of rows (35% Eurozone × 33% time window) — also tested with Switzerland (~1.7%)</span>
     </div>
   </div>
   <div class="g2" style="margin-bottom:14px">
@@ -480,7 +480,7 @@
       <h3>Speedup trend: does it scale?</h3>
       <p class="desc">MinIO decreases (local disk), cloud backends increase with data size</p>
       <div class="chart-wrap" style="height:300px"><canvas id="speedupLine"></canvas></div>
-      <div class="insight"><strong>Key insight:</strong> On cloud (Azure/AWS), speedup grows with size because network I/O dominates — Parquet's smaller footprint wins more at scale. MinIO (local disk) shows decreasing speedup because CSV reading is already fast without network.</div>
+      <div class="insight"><strong>Key insight:</strong> Speedups are in the 5–20× range across all backends. MinIO decreases with size (local disk, per-file overhead adds up). Cloud backends (Azure/AWS) show 6–16× range — network I/O dominates and Parquet's smaller footprint consistently wins at scale.</div>
     </div>
   </div>
 
@@ -494,7 +494,7 @@
       <h3>Query speedup (CSV time ÷ Parquet time)</h3>
       <p class="desc">Green = Parquet faster — darker = larger advantage</p>
       <div style="margin-top:1rem" id="heatmap-query"></div>
-      <div class="insight" style="margin-top:1rem"><strong>Azure size L: 703×</strong> — the largest speedup in the dataset. Azure's slower network amplifies Parquet's advantage dramatically for large files.</div>
+      <div class="insight" style="margin-top:1rem"><strong>Azure L: 16×, AWS L: 11×</strong> — updated from averaged runs. Speedups are consistent across cloud backends at scale. MinIO peaks at 20× (size S) due to local disk speed advantage.</div>
     </div>
     <div class="panel">
       <h3>Per-backend metrics summary</h3>
@@ -562,30 +562,32 @@
 /* ════════════════════════════════════════════════════
    DATA
 ════════════════════════════════════════════════════ */
+// Data averaged from results.csv across all runs per (backend, size, format)
 const RAW = {
   minio: {
-    S: { csv:{mb:298.82,  up:515.11,  dl:877.17,  list:0.031, q:2.953,    rows:584041,    obj:1},
-         par:{mb:78.92,   up:371.57,  dl:690.73,  list:0.025, q:0.149,    rows:584041,    obj:1} },
-    M: { csv:{mb:1494.12, up:668.33,  dl:919.25,  list:0.027, q:5.207,    rows:2916266,   obj:5},
-         par:{mb:394.61,  up:451.25,  dl:771.50,  list:0.032, q:0.374,    rows:2916266,   obj:5} },
-    L: { csv:{mb:5976.46, up:677.92,  dl:855.20,  list:0.031, q:12.362,   rows:11666670,  obj:20},
-         par:{mb:1578.44, up:403.35,  dl:761.28,  list:0.027, q:1.233,    rows:11666670,  obj:20} },
+    // upload_mbps/dl averaged across all full-run rows; list averaged from dedicated list runs; query averaged across Eurozone query rows
+    S: { csv:{mb:298.82,  up:474.22,  dl:931.90,  list:0.027, q:2.812,    rows:584041,    obj:1},
+         par:{mb:78.92,   up:349.96,  dl:688.61,  list:0.023, q:0.143,    rows:584041,    obj:1} },
+    M: { csv:{mb:1494.12, up:663.29,  dl:903.56,  list:0.027, q:5.207,    rows:2916266,   obj:5},
+         par:{mb:394.61,  up:451.25,  dl:771.50,  list:0.024, q:0.374,    rows:2916266,   obj:5} },
+    L: { csv:{mb:5976.46, up:656.52,  dl:899.26,  list:0.031, q:12.362,   rows:11666670,  obj:20},
+         par:{mb:1578.44, up:404.75,  dl:764.26,  list:0.024, q:1.233,    rows:11666670,  obj:20} },
   },
   azure: {
-    S: { csv:{mb:298.82,  up:0.94,    dl:1.84,    list:0.066, q:254.588,  rows:584041,    obj:1},
-         par:{mb:78.92,   up:1.29,    dl:1.29,    list:0.062, q:15.678,   rows:584041,    obj:1} },
-    M: { csv:{mb:1494.12, up:1.46,    dl:1.21,    list:0.071, q:758.786,  rows:2916266,   obj:5},
-         par:{mb:394.61,  up:1.35,    dl:1.28,    list:0.086, q:59.742,   rows:2916266,   obj:5} },
-    L: { csv:{mb:5976.46, up:1.46,    dl:1.21,    list:0.090, q:1801.443, rows:11666670,  obj:20},
-         par:{mb:1578.44, up:1.35,    dl:1.28,    list:0.110, q:196.957,  rows:11666670,  obj:20} },
+    S: { csv:{mb:298.82,  up:1.08,    dl:1.35,    list:0.059, q:332.972,  rows:584041,    obj:1},
+         par:{mb:78.92,   up:1.08,    dl:1.00,    list:0.056, q:58.873,   rows:584041,    obj:1} },
+    M: { csv:{mb:1494.12, up:1.46,    dl:1.21,    list:0.122, q:758.786,  rows:2916266,   obj:5},
+         par:{mb:394.61,  up:1.35,    dl:1.28,    list:0.152, q:59.742,   rows:2916266,   obj:5} },
+    L: { csv:{mb:5976.46, up:0.89,    dl:0.92,    list:0.113, q:2656.691, rows:11666670,  obj:20},
+         par:{mb:1578.44, up:1.48,    dl:1.81,    list:0.172, q:169.251,  rows:11666670,  obj:20} },
   },
   aws: {
-    S: { csv:{mb:298.82,  up:1.59,    dl:2.37,    list:0.584, q:288.697,  rows:584041,    obj:1},
-         par:{mb:78.92,   up:2.99,    dl:2.86,    list:0.409, q:46.045,   rows:584041,    obj:1} },
-    M: { csv:{mb:1494.12, up:2.28,    dl:3.01,    list:0.377, q:811.353,  rows:2916266,   obj:5},
-         par:{mb:394.61,  up:1.63,    dl:1.32,    list:0.432, q:177.007,  rows:2916266,   obj:5} },
-    L: { csv:{mb:5976.46, up:2.28,    dl:3.01,    list:0.450, q:1926.243, rows:11666670,  obj:20},
-         par:{mb:1578.44, up:1.63,    dl:1.32,    list:0.500, q:583.555,  rows:11666670,  obj:20} },
+    S: { csv:{mb:298.82,  up:1.36,    dl:4.84,    list:0.531, q:424.476,  rows:584041,    obj:1},
+         par:{mb:78.92,   up:2.17,    dl:6.97,    list:0.389, q:38.591,   rows:584041,    obj:1} },
+    M: { csv:{mb:1494.12, up:2.28,    dl:3.01,    list:0.455, q:811.353,  rows:2916266,   obj:5},
+         par:{mb:394.61,  up:1.63,    dl:1.32,    list:0.483, q:177.007,  rows:2916266,   obj:5} },
+    L: { csv:{mb:5976.46, up:3.03,    dl:4.81,    list:0.426, q:1820.875, rows:11666670,  obj:20},
+         par:{mb:1578.44, up:4.15,    dl:4.88,    list:0.519, q:164.044,  rows:11666670,  obj:20} },
   }
 };
 
