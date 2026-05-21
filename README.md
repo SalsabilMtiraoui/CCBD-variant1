@@ -1,10 +1,14 @@
 # CCBD Variant 1: CSV vs Parquet on Object Storage
+
 **Cloud Computing and Big Data**  
 **University of Neuchâtel**
 
 ## Team Members
+
 - Salsabil Mtiraoui
 - Erulan Ibraimov
+
+---
 
 ## Project Overview
 
@@ -12,20 +16,18 @@ This project benchmarks **CSV** and **Apache Parquet** storage formats for a syn
 
 The benchmark supports three storage backends:
 
-1. **MinIO** running locally with Docker
+1. **MinIO** — running locally with Docker
 2. **Azure Blob Storage**
 3. **AWS S3**
 
 The main goal is to compare how CSV and Parquet behave for big-data style workloads in terms of:
 
-1. **Generation time**: time needed to create the dataset locally
-2. **Storage size**: size occupied by CSV vs Parquet
-3. **Upload throughput**: upload speed to object storage
-4. **Download throughput**: download speed from object storage
-5. **List time**: time needed to list objects in the bucket/container
-6. **Query performance**: analytical query time using `pyarrow.dataset`
-
-The most important part of this project is reproducibility. The instructions below explain how to run the benchmark locally with Docker/MinIO and how to run the same benchmark on Azure Blob Storage or AWS S3.
+1. **Generation time** — time needed to create the dataset locally
+2. **Storage size** — size occupied by CSV vs Parquet
+3. **Upload throughput** — upload speed to object storage
+4. **Download throughput** — download speed from object storage
+5. **List time** — time needed to list objects in the bucket
+6. **Query performance** — analytical query time using `pyarrow.dataset`
 
 ---
 
@@ -37,41 +39,72 @@ Synthetic financial transaction events:
 |---|---|---|
 | `ts` | timestamp | Transaction timestamp between April 1 and April 30, 2026 |
 | `user_id` | int | User identifier from 1 to 1,000,000 |
-| `region` | string | Region: Eurozone, US, UK, Canada, Switzerland |
-| `event_type` | string | Transaction type: payment, withdrawal, transfer, deposit |
-| `value` | float | Transaction amount generated from event-specific log-normal distributions |
-| `currency` | string | Currency: USD, EUR, GBP, CAD, CHF |
-| `status` | string | Transaction status: completed, pending, failed |
+| `region` | string | One of: Eurozone, US, UK, Canada, Switzerland |
+| `event_type` | string | One of: payment, withdrawal, transfer, deposit |
+| `value` | float | Transaction amount from event-specific log-normal distributions |
+| `currency` | string | One of: USD, EUR, GBP, CAD, CHF |
+| `status` | string | One of: completed, pending, failed |
 
 ---
 
 ## Dataset Sizes
 
-| Label | Rows | Default chunk size | Output |
-|---|---:|---:|---|
-| S | 5,000,000 | 5,000,000 rows | 1 file per format |
-| M | 25,000,000 | 5,000,000 rows | 5 files per format |
-| L | 100,000,000 | 5,000,000 rows | 20 files per format |
+| Label | Rows | Files per format |
+|---|---:|---:|
+| S | 5,000,000 | 1 file |
+| M | 25,000,000 | 5 files |
+| L | 100,000,000 | 20 files |
 
-The default chunk size is `5,000,000` rows. This keeps memory usage reasonable and creates multiple objects for larger datasets.
+Chunk size is fixed at 5,000,000 rows per file.
 
-Generated files are stored locally as:
+---
 
-```text
-data/raw/data_<SIZE>/csv/
-data/curated/data_<SIZE>/parquet/
+## Project Structure
+
 ```
-
-Downloaded files are stored in:
-
-```text
-data/tmp/data_<SIZE>/<file_type>/
-```
-
-Benchmark results are appended to:
-
-```text
-results/results.csv
+CCBD-variant1/
+│
+├── .env                    # environment variables (S3/Azure credentials)
+├── .env.example            # template for env variables
+├── .gitignore
+├── requirements.txt
+├── docker-compose.yml
+├── CCBD-variant1.code-workspace
+├── README.md
+├── video_report_links.md
+│
+# ------- MAIN RUNNABLE SCRIPTS
+├── dataset_gen.py          # 1st - generate synthetic dataset (S/M/L)
+├── upload.py               # 2nd - upload raw + curated to object storage
+├── download.py             # 3rd - download from object storage
+├── bench.py                # 4th - run full benchmark → produces results.csv
+├── test_connection.py      # utility - test endpoint connection (--storage minio/azure/aws)
+│
+# ------- CONFIGURATION
+├── config.py               # shared settings (endpoints, bucket names)
+│
+# ------- ANALYSIS
+├── analysis.ipynb          # plots + interpretation of results.csv
+├── dashboard.html          # optional visual dashboard
+│
+# ------- DATA (gitignored)
+├── data/
+│   ├── raw/
+│   │   ├── data_S/csv/     # S: 1 file
+│   │   ├── data_M/csv/     # M: 5 files
+│   │   └── data_L/csv/     # L: 20 files
+│   ├── curated/
+│   │   ├── data_S/parquet/ # S: 1 file
+│   │   ├── data_M/parquet/ # M: 5 files
+│   │   └── data_L/parquet/ # L: 20 files
+│   └── tmp/                # download benchmark folder, overwritten each run to save space
+│       ├── data_S/
+│       ├── data_M/
+│       └── data_L/
+│
+# ------- RESULTS
+└── results/
+    └── results.csv         # benchmark outputs (upload/download throughput, query times)
 ```
 
 ---
@@ -81,9 +114,7 @@ results/results.csv
 Required software:
 
 - Python 3.10+
-- Docker and Docker Compose, only required for local MinIO
-- A terminal or shell
-- Optional: Jupyter or VS Code for analysis notebooks
+- Docker and Docker Compose (only required for local MinIO)
 
 Python packages:
 
@@ -99,7 +130,7 @@ tqdm
 azure-storage-blob
 ```
 
-Install dependencies:
+Install all dependencies:
 
 ```bash
 pip install -r requirements.txt
@@ -107,43 +138,9 @@ pip install -r requirements.txt
 
 ---
 
-## Project Structure
-
-```text
-ccbd/
-├── docker-compose.yml
-├── requirements.txt
-├── .env
-├── analysis.ipynb
-├── bench.py
-├── config.py
-├── dataset_gen.py
-├── download.py
-├── test_connection.py
-├── upload.py
-└── results/
-    └── results.csv
-```
-
-Main scripts:
-
-| Script | Purpose |
-|---|---|
-| `test_connection.py` | Tests MinIO, AWS S3, or Azure Blob access |
-| `dataset_gen.py` | Generates synthetic CSV or Parquet datasets |
-| `upload.py` | Uploads generated files to object storage |
-| `download.py` | Downloads files from object storage |
-| `bench.py` | Runs the full benchmark pipeline and writes results |
-| `config.py` | Loads credentials and creates MinIO/AWS/Azure clients |
-| `analysis.ipynb` | Interactive notebook with plots and interpretation |
-
----
-
 ## Configuration
 
-Create a `.env` file in the project root.
-
-Example:
+Create a `.env` file in the project root (or copy `.env.example`):
 
 ```env
 # -----------------------
@@ -152,15 +149,15 @@ Example:
 MINIO_ENDPOINT=http://localhost:9000
 MINIO_ACCESS_KEY=minioadmin
 MINIO_SECRET_KEY=minioadmin
-MINIO_BUCKET=<minio_bucket>
+MINIO_BUCKET=ccbd
 MINIO_REGION=eu-central-1
 
 # -----------------------
 # AWS S3 config
 # -----------------------
-AWS_ACCESS_KEY_ID=<your_aws_access_key_id>
-AWS_SECRET_ACCESS_KEY=<your_aws_secret_access_key>
-AWS_BUCKET=<your_s3_bucket_name>
+AWS_ACCESS_KEY_ID=<your_access_key_id>
+AWS_SECRET_ACCESS_KEY=<your_secret_access_key>
+AWS_BUCKET=<your_bucket_name>
 AWS_REGION=eu-north-1
 
 # -----------------------
@@ -170,249 +167,137 @@ AZURE_CONNECTION_STRING=<your_azure_connection_string>
 AZURE_CONTAINER=<your_container_name>
 ```
 
-Do not commit real cloud credentials to GitHub.
+> **Never commit real credentials to GitHub.**
 
 ---
 
 # How to Reproduce Results
 
-## Option A: Reproduce Locally with Docker and MinIO
+## Option A: Local with Docker and MinIO
 
-This is the easiest and recommended reproducibility path because it does not require a real cloud account.
+This is the easiest and recommended option. No cloud account required.
 
-### Step 1: Start MinIO with Docker
-
-From the project root, run:
+### Step 1 — Start MinIO
 
 ```bash
 docker compose up -d
 ```
 
-This starts MinIO with:
+This starts two services:
 
 | Service | URL |
 |---|---|
 | MinIO S3 API | `http://localhost:9000` |
 | MinIO Web Console | `http://localhost:9001` |
 
-Default login credentials:
+### Step 2 — Create a bucket
 
-```text
-Username: minioadmin
-Password: minioadmin
-```
+1. Open `http://localhost:9001` in your browser
+2. Log in with `minioadmin` / `minioadmin`
+3. Create a bucket named `ccbd`
+4. Set `MINIO_BUCKET=ccbd` in your `.env`
 
-### Step 2: Create a MinIO bucket
-
-Open the MinIO console:
-
-```text
-http://localhost:9001
-```
-
-Then:
-
-1. Log in with `minioadmin` / `minioadmin`
-2. Create a bucket, for example `ccbd`
-3. Put the same bucket name in `.env`:
-
-```env
-MINIO_BUCKET=ccbd
-```
-
-### Step 3: Test the MinIO connection
+### Step 3 — Test the connection
 
 ```bash
-python src/test_connection.py --storage minio
+python test_connection.py --storage minio
 ```
 
-Expected behavior:
+Expected: uploads a small test object, downloads it, deletes it, and confirms the connection works.
 
-- Uploads a small test object
-- Downloads it again
-- Deletes it
-- Prints that the MinIO connection works
-
-### Step 4: Run the full benchmark on MinIO
-
-Run the benchmark for both CSV and Parquet:
+### Step 4 — Run the benchmark
 
 ```bash
-python src/bench.py --storage minio --size S 
+python bench.py --storage minio --size S
+python bench.py --storage minio --size M
+python bench.py --storage minio --size L
 ```
 
-For larger sizes:
+Each command runs the full pipeline for both CSV and Parquet: generate → upload → download → list → query.
 
-```bash
-python src/bench.py --storage minio --size M 
-python src/bench.py --storage minio --size L 
-```
-
-The command performs:
-
-1. Dataset generation
-2. Upload to MinIO
-3. Download from MinIO
-4. Object listing
-5. Query execution
-6. Result writing to `results/results.csv`
+Results are saved to `results/results.csv`.
 
 ---
 
-## Option B: Reproduce on Azure Blob Storage
+## Option B: Azure Blob Storage
 
-Azure is almost the same workflow as MinIO. The main difference is that Azure uses a **connection string** and a **container** instead of the S3-style endpoint, access key, secret key, and bucket.
+### Step 1 — Create an Azure Storage Account
 
-### Step 1: Create an Azure Storage Account
+1. Go to the [Azure Portal](https://portal.azure.com)
+2. Search for **Storage accounts** and create a new one
+3. Choose a region (e.g. North Europe or Switzerland North)
 
-In the Azure Portal:
+### Step 2 — Create a container
 
-1. Go to **Storage accounts**
-2. Create a new storage account
-3. Choose a region, for example North Europe or Switzerland North
-4. After creation, open the storage account
+1. Inside your storage account, go to **Data storage → Containers**
+2. Create a container named `ccbd`
+3. Keep access level set to **Private**
 
-### Step 2: Create a Blob container
+### Step 3 — Get the connection string
 
-Inside the storage account:
-
-1. Go to **Data storage → Containers**
-2. Create a new container, for example `ccbd`
-3. Keep the access level private
-
-### Step 3: Get the Azure connection string
-
-Inside the storage account:
-
-1. Go to **Security + networking → Access keys**
-2. Copy the connection string for Key 1 or Key 2
-3. Paste it into `.env`
+1. Inside your storage account, go to **Security + networking → Access keys**
+2. Copy the **Connection string** for Key 1
+3. Paste it into `.env`:
 
 ```env
-AZURE_CONNECTION_STRING=<your_azure_connection_string>
+AZURE_CONNECTION_STRING=<your_connection_string>
 AZURE_CONTAINER=ccbd
 ```
 
-### Step 4: Test the Azure connection
+### Step 4 — Test the connection
 
 ```bash
 python test_connection.py --storage azure
 ```
 
-Expected behavior:
-
-- Uploads a small test blob
-- Downloads it again
-- Deletes it
-- Prints that the Azure connection works
-
-### Step 5: Run the full benchmark on Azure
+### Step 5 — Run the benchmark
 
 ```bash
-python bench.py --storage azure --size S 
-```
-
-For larger sizes:
-
-```bash
-python bench.py --storage azure --size M 
-python bench.py --storage azure --size L 
-```
-
-The benchmark writes results to:
-
-```text
-results/results.csv
+python bench.py --storage azure --size S
+python bench.py --storage azure --size M
+python bench.py --storage azure --size L
 ```
 
 ---
 
-## Option C: Reproduce on AWS S3
+## Option C: AWS S3
 
-AWS also follows the same benchmark workflow as MinIO. Since MinIO implements the S3 API, the AWS version mainly changes the credentials and removes the local endpoint.
+### Step 1 — Create an S3 bucket
 
-### Step 1: Create an S3 bucket
+1. Go to the [AWS Console](https://console.aws.amazon.com/s3)
+2. Click **Create bucket**
+3. Give it a unique name (e.g. `ccbd-yourname`)
+4. Choose a region (e.g. `eu-north-1`)
+5. Leave all other settings as default and confirm
 
-In the AWS Console:
+### Step 2 — Create an IAM user and get credentials
 
-1. Go to **S3**
-2. Create a bucket, for example `ccbd-your-name`
-3. Choose a region, for example `eu-north-1`
-4. Keep default private access settings
-
-### Step 2: Create or select AWS credentials
-
-You need an IAM user or role with permission to access the bucket.
-
-Minimum required S3 actions:
-
-```text
-s3:PutObject
-s3:GetObject
-s3:DeleteObject
-s3:ListBucket
-```
-
-For a simple student benchmark, an IAM user with restricted access to only the benchmark bucket is recommended.
-
-Example IAM policy, replace the bucket name with your bucket:
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "s3:ListBucket"
-      ],
-      "Resource": "arn:aws:s3:::ccbd-your-name"
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "s3:PutObject",
-        "s3:GetObject",
-        "s3:DeleteObject"
-      ],
-      "Resource": "arn:aws:s3:::ccbd-your-name/*"
-    }
-  ]
-}
-```
-
-### Step 3: Configure `.env` for AWS
+1. Go to **IAM → Users** and click **Create user**
+2. Give the user a name (e.g. `ccbd-bench`)
+3. On the permissions step, choose **Attach policies directly**
+4. Search for and attach **AmazonS3FullAccess** (or create a restricted policy for your bucket only)
+5. After the user is created, go to **Security credentials → Access keys**
+6. Click **Create access key**, select **Other**, and download the key
+7. Copy both the Access Key ID and Secret Access Key into `.env`:
 
 ```env
-AWS_ACCESS_KEY_ID=<your_aws_access_key_id>
-AWS_SECRET_ACCESS_KEY=<your_aws_secret_access_key>
-AWS_BUCKET=ccbd-your-name
+AWS_ACCESS_KEY_ID=<your_access_key_id>
+AWS_SECRET_ACCESS_KEY=<your_secret_access_key>
+AWS_BUCKET=ccbd-yourname
 AWS_REGION=eu-north-1
 ```
 
-### Step 4: Test the AWS connection
+### Step 3 — Test the connection
 
 ```bash
 python test_connection.py --storage aws
 ```
 
-Expected behavior:
-
-- Uploads a small object to S3
-- Downloads it again
-- Deletes it
-- Prints that the AWS connection works
-
-### Step 5: Run the full benchmark on AWS
+### Step 4 — Run the benchmark
 
 ```bash
-python bench.py --storage aws --size S 
-```
-
-For larger sizes:
-
-```bash
-python bench.py --storage aws --size M 
+python bench.py --storage aws --size S
+python bench.py --storage aws --size M
 python bench.py --storage aws --size L
 ```
 
@@ -420,105 +305,64 @@ python bench.py --storage aws --size L
 
 ## Running Individual Steps
 
-Instead of running the full benchmark, each step can be executed separately.
+Each step of the pipeline can also be run separately.
 
 ### Generate data only
 
-CSV:
-
 ```bash
 python dataset_gen.py --label S --file-type csv --seed 42 --clean
-```
-
-Parquet:
-
-```bash
 python dataset_gen.py --label S --file-type parquet --seed 42 --clean
 ```
 
 ### Upload only
 
 ```bash
-python upload.py --storage minio --size S --file-type csv --clean
-python upload.py --storage minio --size S --file-type parquet --clean
+python upload.py --storage minio --size S --file-type csv
+python upload.py --storage minio --size S --file-type parquet
 ```
-
-Use `--storage azure` or `--storage aws` to run the same step on Azure or AWS.
 
 ### Download only
 
 ```bash
-python download.py --storage minio --size S --file-type csv --clean
-python download.py --storage minio --size S --file-type parquet --clean
+python download.py --storage minio --size S --file-type csv
+python download.py --storage minio --size S --file-type parquet
 ```
 
-### List and query only
-
-The `bench.py` script can run selected operations:
+### Run only specific operations
 
 ```bash
-python bench.py --storage minio --size S --file-type both --operation list query
-```
-
-### Run only generation and upload
-
-```bash
-python bench.py --storage minio --size S --file-type both --operation generate upload --clean
+python bench.py --storage minio --size S --operation list query
+python bench.py --storage minio --size S --operation generate upload
 ```
 
 ---
 
 ## Analytics Query
 
-The benchmark runs the same analytical query on CSV and Parquet using `pyarrow.dataset`.
+The benchmark runs a fixed analytical query on both CSV and Parquet using `pyarrow.dataset`.
 
-Query logic:
+**Default parameters:**
 
-```python
-# Filter:
-# region = "Eurozone"
-# ts >= "2026-04-10"
-# ts <  "2026-04-20"
-
-# Aggregate:
-# count(value) and mean(value)
-# grouped by event_type
-```
-
-The relevant code in `src/bench.py` is:
-
-```python
-filt = (
-    (ds.field("region") == region)
-    & (ds.field("ts") >= pd.Timestamp(start_ts).to_pydatetime())
-    & (ds.field("ts") < pd.Timestamp(end_ts).to_pydatetime())
-)
-
-table = dataset.to_table(columns=["event_type", "value"], filter=filt)
-
-grouped = table.group_by("event_type").aggregate([
-    ("value", "count"),
-    ("value", "mean"),
-])
-```
-
-Default query parameters:
-
-| Parameter | Value |
+| Parameter | Default value |
 |---|---|
-| Region | `Eurozone` |
-| Start timestamp | `2026-04-10` |
-| End timestamp | `2026-04-20` |
+| Region filter | `Eurozone` |
+| Time range | `2026-04-10` to `2026-04-20` |
 | Group by | `event_type` |
 | Aggregations | `count(value)`, `mean(value)` |
+
+The default region is `Eurozone`. We also tested with `Switzerland` to evaluate query performance across different data selectivities. To change the region:
+
+```bash
+python bench.py --storage minio --size S --region Switzerland
+```
+
+Available region options: `Eurozone`, `US`, `UK`, `Canada`, `Switzerland`.
 
 ---
 
 ## Output Format
 
-Results are saved to `results/results.csv`.
-
-The output contains fields such as:
+Results are appended to `results/results.csv` after each run.
 
 | Field | Description |
 |---|---|
@@ -537,30 +381,26 @@ The output contains fields such as:
 | `download_mbps` | Download throughput |
 | `list_seconds` | Object listing time |
 | `query_seconds` | Query execution time |
-| `query_rows` | Number of rows after filtering |
-| `query_result_groups` | Number of groups returned |
+| `query_rows` | Rows returned after filtering |
+| `query_result_groups` | Number of groups in result |
 
 ---
 
 ## Reproducibility Notes
 
-- The dataset is deterministic when the same `--seed` is used.
-- Default seed is `42`.
-- Each generated chunk uses a derived seed based on dataset size and chunk number, so chunks remain deterministic but not identical.
-- Default chunk size is `5,000,000` rows.
-- Parquet files are written with Snappy compression.
+- Dataset generation is deterministic with `--seed 42` (default)
+- Each chunk uses a derived seed so chunks are deterministic but not identical
+- Parquet files are written with Snappy compression
 - CSV and Parquet are stored under separate prefixes:
 
-```text
+```
 raw/data_<SIZE>/csv/
 curated/data_<SIZE>/parquet/
 ```
 
-- MinIO was used through Docker for the local reproducibility setup.
-- Azure uses `azure-storage-blob` and an Azure connection string.
-- AWS and MinIO use `boto3` and the S3 API.
-- Network conditions can strongly affect upload and download times on Azure and AWS.
-- Size L can require significant disk space and runtime.
+- Downloaded files go to `data/tmp/data_<SIZE>/` and are overwritten on each run to save disk space
+- MinIO via Docker is recommended for fully local reproducibility
+- Network conditions will affect upload/download results on Azure and AWS
 
 ---
 
@@ -572,13 +412,13 @@ curated/data_<SIZE>/parquet/
 docker compose down
 ```
 
-### Stop MinIO and remove stored data
+### Stop MinIO and delete all stored data
 
 ```bash
 docker compose down -v
 ```
 
-### Remove local generated data and results
+### Delete local generated data and results
 
 Linux/macOS:
 
@@ -596,8 +436,9 @@ Remove-Item -Recurse -Force data, results
 
 ## Limitations & Threats to Validity
 
-- Results depend on local hardware, disk speed, and available RAM.
-- Cloud results depend on network conditions and provider-side throttling.
-- MinIO is useful for reproducibility but does not represent real WAN cloud performance.
-- Synthetic transactions may not perfectly represent real financial workloads.
-- Single benchmark runs do not provide statistical confidence intervals.
+- Results depend on local hardware, disk speed, and available RAM
+- Cloud results depend on network conditions and provider-side throttling
+- MinIO does not represent real WAN cloud performance but ensures reproducibility
+- Synthetic data may not perfectly represent real financial workloads
+- Single benchmark runs do not provide statistical confidence intervals
+- Size L requires significant disk space (~15 GB) and runtime
