@@ -114,25 +114,28 @@ ccbd/
 ├── docker-compose.yml
 ├── requirements.txt
 ├── .env
-└── src/
-    ├── bench.py
-    ├── config.py
-    ├── dataset_gen.py
-    ├── download.py
-    ├── test_connection.py
-    └── upload.py
+├── analysis.ipynb
+├── bench.py
+├── config.py
+├── dataset_gen.py
+├── download.py
+├── test_connection.py
+├── upload.py
+└── results/
+    └── results.csv
 ```
 
 Main scripts:
 
 | Script | Purpose |
 |---|---|
-| `src/test_connection.py` | Tests MinIO, AWS S3, or Azure Blob access |
-| `src/dataset_gen.py` | Generates synthetic CSV or Parquet datasets |
-| `src/upload.py` | Uploads generated files to object storage |
-| `src/download.py` | Downloads files from object storage |
-| `src/bench.py` | Runs the full benchmark pipeline and writes results |
-| `src/config.py` | Loads credentials and creates MinIO/AWS/Azure clients |
+| `test_connection.py` | Tests MinIO, AWS S3, or Azure Blob access |
+| `dataset_gen.py` | Generates synthetic CSV or Parquet datasets |
+| `upload.py` | Uploads generated files to object storage |
+| `download.py` | Downloads files from object storage |
+| `bench.py` | Runs the full benchmark pipeline and writes results |
+| `config.py` | Loads credentials and creates MinIO/AWS/Azure clients |
+| `analysis.ipynb` | Interactive notebook with plots and interpretation |
 
 ---
 
@@ -293,7 +296,7 @@ AZURE_CONTAINER=ccbd
 ### Step 4: Test the Azure connection
 
 ```bash
-python src/test_connection.py --storage azure
+python test_connection.py --storage azure
 ```
 
 Expected behavior:
@@ -306,14 +309,14 @@ Expected behavior:
 ### Step 5: Run the full benchmark on Azure
 
 ```bash
-python src/bench.py --storage azure --size S 
+python bench.py --storage azure --size S 
 ```
 
 For larger sizes:
 
 ```bash
-python src/bench.py --storage azure --size M 
-python src/bench.py --storage azure --size L 
+python bench.py --storage azure --size M 
+python bench.py --storage azure --size L 
 ```
 
 The benchmark writes results to:
@@ -390,7 +393,7 @@ AWS_REGION=eu-north-1
 ### Step 4: Test the AWS connection
 
 ```bash
-python src/test_connection.py --storage aws
+python test_connection.py --storage aws
 ```
 
 Expected behavior:
@@ -403,14 +406,14 @@ Expected behavior:
 ### Step 5: Run the full benchmark on AWS
 
 ```bash
-python src/bench.py --storage aws --size S 
+python bench.py --storage aws --size S 
 ```
 
 For larger sizes:
 
 ```bash
-python src/bench.py --storage aws --size M 
-python src/bench.py --storage aws --size L
+python bench.py --storage aws --size M 
+python bench.py --storage aws --size L
 ```
 
 ---
@@ -424,20 +427,20 @@ Instead of running the full benchmark, each step can be executed separately.
 CSV:
 
 ```bash
-python src/dataset_gen.py --label S --file-type csv --seed 42 --clean
+python dataset_gen.py --label S --file-type csv --seed 42 --clean
 ```
 
 Parquet:
 
 ```bash
-python src/dataset_gen.py --label S --file-type parquet --seed 42 --clean
+python dataset_gen.py --label S --file-type parquet --seed 42 --clean
 ```
 
 ### Upload only
 
 ```bash
-python src/upload.py --storage minio --size S --file-type csv --clean
-python src/upload.py --storage minio --size S --file-type parquet --clean
+python upload.py --storage minio --size S --file-type csv --clean
+python upload.py --storage minio --size S --file-type parquet --clean
 ```
 
 Use `--storage azure` or `--storage aws` to run the same step on Azure or AWS.
@@ -445,8 +448,8 @@ Use `--storage azure` or `--storage aws` to run the same step on Azure or AWS.
 ### Download only
 
 ```bash
-python src/download.py --storage minio --size S --file-type csv --clean
-python src/download.py --storage minio --size S --file-type parquet --clean
+python download.py --storage minio --size S --file-type csv --clean
+python download.py --storage minio --size S --file-type parquet --clean
 ```
 
 ### List and query only
@@ -454,13 +457,13 @@ python src/download.py --storage minio --size S --file-type parquet --clean
 The `bench.py` script can run selected operations:
 
 ```bash
-python src/bench.py --storage minio --size S --file-type both --operation list query
+python bench.py --storage minio --size S --file-type both --operation list query
 ```
 
 ### Run only generation and upload
 
 ```bash
-python src/bench.py --storage minio --size S --file-type both --operation generate upload --clean
+python bench.py --storage minio --size S --file-type both --operation generate upload --clean
 ```
 
 ---
